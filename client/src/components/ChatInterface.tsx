@@ -3,6 +3,8 @@ import { Send, Bot, User, Info, FileWarning } from 'lucide-react';
 import { askQuestion, getChatHistory } from '../services/api';
 import type { ChatMessage, RawApiChatMessage } from '../types';
 import Accordion from './Accordion';
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 
 interface ChatInterfaceProps {
   selectedFileIds: string[];
@@ -133,7 +135,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
             ? 'bg-primary-600 text-white rounded-bl-3xl rounded-tr-3xl rounded-br-md' // User message: right-aligned, pointed bottom-right
             : `bg-white border border-borderLight text-gray-800 rounded-br-3xl rounded-tl-3xl rounded-bl-md ${msg.isError ? 'border-red-300 bg-red-50 text-red-900' : ''}` // AI message: left-aligned, pointed bottom-left
         }`}>
-          <p className="whitespace-pre-wrap">{msg.content}</p>
+          {isUser ? (
+            <p className="whitespace-pre-wrap">{msg.content}</p>
+          ) : (
+            <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5">
+              <ReactMarkdown 
+                rehypePlugins={[rehypeRaw]}
+              >
+                {msg.content}
+              </ReactMarkdown>
+            </div>
+          )}
           {msg.context && msg.context.length > 0 && (
             <div className="mt-3 pt-3 border-t border-borderLight text-xs text-gray-600">
               <div className="flex items-center gap-2 mb-2 px-1">

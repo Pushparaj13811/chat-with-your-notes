@@ -22,7 +22,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
 export async function generateResponse(prompt: string, context: string): Promise<string> {
   try {
-    const fullPrompt = `Based on the following context, please answer the question. If the context doesn't contain enough information to answer the question, say so.
+    const fullPrompt = `Based on the following context, please answer the question. If the context doesn't contain enough information to answer the question, say so. Format your answer using Markdown.
 
 Context:
 ${context}

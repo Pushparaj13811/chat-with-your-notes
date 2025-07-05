@@ -12,7 +12,58 @@
   }
 }
 
+/* Markdown styles for prose */
 @layer components {
+  .prose {
+    h1 {
+      @apply text-2xl font-bold mb-4 text-gray-900;
+    }
+    h2 {
+      @apply text-xl font-bold mb-3 text-gray-800;
+    }
+    h3 {
+      @apply text-lg font-semibold mb-2 text-gray-700;
+    }
+    p {
+      @apply mb-2 leading-relaxed text-gray-700;
+    }
+    ul,
+    ol {
+      @apply list-inside mb-2 pl-4;
+    }
+    ul {
+      @apply list-disc;
+    }
+    ol {
+      @apply list-decimal;
+    }
+    li {
+      @apply mb-1 text-gray-700;
+    }
+    a {
+      @apply text-primary-600 hover:underline;
+    }
+    code {
+      @apply bg-gray-100 text-gray-800 px-1 py-0.5 rounded;
+    }
+    pre code {
+      @apply block bg-gray-800 text-gray-100 p-3 rounded-md overflow-x-auto my-3;
+    }
+    blockquote {
+      @apply border-l-4 border-primary-200 pl-4 py-2 my-4 bg-primary-50 text-gray-700 italic;
+    }
+    table {
+      @apply w-full border-collapse my-4;
+    }
+    th,
+    td {
+      @apply border border-gray-300 p-2 text-gray-800;
+    }
+    th {
+      @apply bg-gray-100 font-semibold;
+    }
+  }
+
   .btn-primary {
     @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
   }
