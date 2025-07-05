@@ -17,7 +17,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [openContextId, setOpenContextId] = useState<string | null>(null); 
+  const [openContextId, setOpenContextId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
             return transformedMsg;
           }));
         } else {
-            setError(response.message || "Failed to load history.");
+          setError(response.message || "Failed to load history.");
         }
       } catch {
         setError("An error occurred while fetching history.");
@@ -73,7 +73,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
       timestamp: new Date(),
       createdAt: new Date().toISOString()
     };
-    
+
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
@@ -96,7 +96,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
           onSessionCreated(response.data.chatSessionId);
         }
       } else {
-          throw new Error(response.message || 'Failed to get a response.');
+        throw new Error(response.message || 'Failed to get a response.');
       }
     } catch (err) {
       const errorMessage: ChatMessage = {
@@ -130,21 +130,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
             <Icon className={`h-6 w-6 ${msg.isError ? 'text-red-600' : 'text-primary-700'}`} />
           </div>
         )}
-        <div className={`w-full max-w-xl p-4 rounded-2xl shadow-chat-bubble ${
-          isUser 
+        <div className={`w-full max-w-3xl p-4 rounded-2xl shadow-chat-bubble ${isUser
             ? 'bg-primary-600 text-white rounded-bl-3xl rounded-tr-3xl rounded-br-md' // User message: right-aligned, pointed bottom-right
             : `bg-white border border-borderLight text-gray-800 rounded-br-3xl rounded-tl-3xl rounded-bl-md ${msg.isError ? 'border-red-300 bg-red-50 text-red-900' : ''}` // AI message: left-aligned, pointed bottom-left
-        }`}>
+          }`}>
           {isUser ? (
             <p className="whitespace-pre-wrap">{msg.content}</p>
           ) : (
-            <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5">
-              <ReactMarkdown 
-                rehypePlugins={[rehypeRaw]}
-              >
+            <div className="prose prose-sm max-w-none">
+              <ReactMarkdown rehypePlugins={[rehypeRaw]}>
                 {msg.content}
               </ReactMarkdown>
             </div>
+
           )}
           {msg.context && msg.context.length > 0 && (
             <div className="mt-3 pt-3 border-t border-borderLight text-xs text-gray-600">
@@ -156,11 +154,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
                 {msg.context.map((contextItem, index) => {
                   const contextId = `${msg.id}-context-${index}`;
                   return (
-                    <Accordion 
-                      key={contextId} 
+                    <Accordion
+                      key={contextId}
                       title={`Context Chunk ${index + 1}`}
-                      isOpen={openContextId === contextId} 
-                      onToggle={() => handleAccordionToggle(contextId)} 
+                      isOpen={openContextId === contextId}
+                      onToggle={() => handleAccordionToggle(contextId)}
                     >
                       <div className="p-2 bg-backgroundLight rounded-md whitespace-pre-wrap leading-relaxed text-gray-800">
                         {contextItem}
@@ -181,43 +179,56 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
       </div>
     );
   };
-  
+
   if (selectedFileIds.length === 0) {
     return (
-        <div className="flex flex-col items-center justify-center h-full text-center bg-white rounded-lg border border-borderLight shadow-custom-md p-6">
-            <FileWarning className="h-14 w-14 text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700">No File Selected</h3>
-            <p className="text-gray-500 mt-2">Please select a document from the sidebar to start a conversation.</p>
-        </div>
+      <div className="flex flex-col items-center justify-center h-full text-center bg-white rounded-lg border border-borderLight shadow-custom-md p-6">
+        <FileWarning className="h-14 w-14 text-gray-400 mb-4" />
+        <h3 className="text-xl font-semibold text-gray-700">No File Selected</h3>
+        <p className="text-gray-500 mt-2">Please select a document from the sidebar to start a conversation.</p>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col h-full bg-white rounded-xl shadow-custom-lg overflow-hidden">
       <div className="flex-1 p-6 space-y-6 overflow-y-auto">
-        {error && <div className="text-center text-red-500 bg-red-100 p-3 rounded-lg border border-red-200">{error}</div>}
-        {messages.length === 0 && !isLoading && (
-            <div className="text-center py-10">
-                <Bot className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500">Ask me anything about the selected document!</p>
-            </div>
+        {error && (
+          <div className="text-center text-red-500 bg-red-100 p-3 rounded-lg border border-red-200">
+            {error}
+          </div>
         )}
+
+        {messages.length === 0 && !isLoading && (
+          <div className="text-center py-10">
+            <Bot className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-500">
+              Ask me anything about the selected document!
+            </p>
+          </div>
+        )}
+
         {messages.map(renderMessage)}
+
         {isLoading && messages.length > 0 && (
           <div className="flex items-start gap-4">
-             <div className="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-primary-50">
-                <Bot className="h-6 w-6 text-primary-700" />
+            <div className="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-primary-50">
+              <Bot className="h-6 w-6 text-primary-700" />
             </div>
-            <div className="w-full max-w-xl p-4 rounded-2xl bg-white border border-borderLight text-gray-800 rounded-br-3xl rounded-tl-3xl rounded-bl-md shadow-chat-bubble">
-                <p className="animate-pulse text-gray-600">Thinking...</p>
+            <div className="w-full max-w-3xl p-4 rounded-2xl bg-white border border-borderLight text-gray-800 rounded-br-3xl rounded-tl-3xl rounded-bl-md shadow-chat-bubble">
+              <p className="animate-pulse text-gray-600">Thinking...</p>
             </div>
           </div>
         )}
+
         <div ref={messagesEndRef} />
       </div>
 
       {/* Message input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-borderLight bg-gray-50 flex items-center gap-3 shadow-custom-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="p-4 border-t border-borderLight bg-gray-50 flex items-center gap-3 shadow-custom-sm"
+      >
         <input
           type="text"
           value={inputValue}
