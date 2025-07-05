@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model File {
+  id            String    @id @default(cuid())
+  filename      String    @unique
+  originalName  String
+  mimeType      String
+  size          Int
+  path          String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  chunks        Chunk[]
+  chatSessions  ChatSession[] @relation("ChatSessionFiles")
+
+  @@map("files")
+}
+
+model Chunk {
+  id         String   @id @default(cuid())
+  content    String   @db.Text
+  chunkIndex Int
+  startChar  Int
+  endChar    Int
+  embedding  Float[]
+  fileId     String
+  file       File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@map("chunks")
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  title     String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  files     File[]        @relation("ChatSessionFiles")
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id            String      @id @default(cuid())
+  role          String // "user" or "assistant"
+  content       String      @db.Text
+  createdAt     DateTime    @default(now())
+  chatSessionId String
+  chatSession   ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+  context       Json? // Store context chunks or other metadata
+}
