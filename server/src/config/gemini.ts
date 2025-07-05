@@ -22,14 +22,31 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
 export async function generateResponse(prompt: string, context: string): Promise<string> {
   try {
-    const fullPrompt = `Based on the following context, please answer the question. If the context doesn't contain enough information to answer the question, say so. Format your answer using Markdown.
+    const fullPrompt = `You are an AI assistant helping users understand information from a given context.
 
-Context:
-${context}
-
-Question: ${prompt}
-
-Answer:`;
+    Use only the information provided below to answer the question. If the context does not contain enough information, clearly say: "Sorry, I couldn't find enough information in the provided context."
+    
+    Please follow these rules when answering:
+    - Be concise and clear
+    - Use bullet points or headings if needed
+    - Format your response using Markdown (e.g., **bold**, _italic_, \`code\`, etc.)
+    - Do not make up facts
+    - Cite any specific part of the context if it supports your answer
+    
+    ---
+    
+    ### 🧠 Context:
+    ${context}
+    
+    ---
+    
+    ### ❓ Question:
+    ${prompt}
+    
+    ---
+    
+    ### ✅ Answer:
+    `;
 
     const result = await textModel.generateContent(fullPrompt);
     const response = await result.response;
