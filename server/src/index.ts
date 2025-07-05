@@ -79,12 +79,6 @@ process.on('SIGINT', async () => {
     process.exit(0);
 });
 
-process.on('SIGTERM', async () => {
-    console.log('\n🛑 Shutting down server...');
-    await disconnectDatabase();
-    process.exit(0);
-});
-
 // Start server
 async function startServer() {
     try {
