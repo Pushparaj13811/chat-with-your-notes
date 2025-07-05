@@ -1,69 +1,56 @@
-# React + TypeScript + Vite
+# Chat with Your Notes - Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the frontend client for the "Chat with Your Notes" application, built with React, TypeScript, and Tailwind CSS. It provides an intuitive interface for uploading documents, chatting with AI, and managing chat sessions.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 📄 **File Upload**: Upload PDF, TXT, and DOCX files.
+- 🤖 **AI Chat Interface**: Engage in natural language conversations with AI about your documents.
+- 🔄 **Multi-File Chat**: Select and chat with multiple documents simultaneously.
+- 💬 **Chat Session Management**: View, select, and delete past chat sessions with associated files and history.
+- 🎨 **Modern UI**: Clean and responsive design with clearly distinguished user/AI messages, expandable context accordions, and a "Thinking..." indicator during AI processing.
+- 🧭 **Sidebar Navigation**: Easily switch between a list of uploaded files and chat history.
+- ⚡ **Real-time Streaming**: AI responses are streamed in real-time for a smoother user experience.
+- 📝 **Markdown Formatting**: AI responses are rendered with full Markdown support.
 
-## Expanding the ESLint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Framework**: React 19
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **HTTP Client**: Axios
+- **Icons**: Lucide React
+- **Build Tool**: Vite
+- **Markdown Rendering**: `react-markdown`, `rehype-raw`
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Prerequisites
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+- Node.js 18+ or Bun
+- Access to the backend server (typically running on `http://localhost:3001`)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Setup Instructions
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+1.  **Navigate to the client directory:**
+    ```bash
+    cd client
+    ```
+2.  **Install dependencies:**
+    ```bash
+    npm install # or bun install or yarn install
+    ```
+3.  **Configure Environment Variables:**
+    Create a `.env` file in the `client/` directory based on `env.example` (if one exists, otherwise ensure `VITE_API_URL` is set).
+    ```env
+    VITE_API_URL=http://localhost:3001/api
+    ```
+4.  **Start the development server:**
+    ```bash
+    npm run dev # or bun dev or yarn dev
+    ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Development Scripts
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+-   `npm run dev`: Starts the development server with hot reload.
+-   `npm run build`: Builds the application for production.
+-   `npm run preview`: Locally previews the production build.
+-   `npm run lint`: Runs ESLint for code linting.
