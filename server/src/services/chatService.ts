@@ -1,5 +1,5 @@
 import { prisma } from '../config/database';
-import { generateEmbedding, generateResponse } from '../config/gemini';
+import { generateResponse } from '../config/gemini';
 import { findSimilarChunks } from '../utils/textProcessor';
 import type { Chunk } from '@prisma/client';
 
