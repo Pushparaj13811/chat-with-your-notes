@@ -4,8 +4,10 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --watch src/index.ts",
+    "dev:node": "NODE_ENV=development tsx watch src/index.ts",
     "build": "bun build src/index.ts --outdir dist",
-    "start": "bun run dist/index.js",
+    "start": "bun run src/index.ts",
+    "start:node": "tsx src/index.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -20,6 +22,7 @@
     "@types/pdf-parse": "^1.1.4",
     "@types/uuid": "^9.0.0",
     "prisma": "^5.0.0",
+    "tsx": "^4.0.0",
     "typescript": "^5.0.0"
   },
   "peerDependencies": {

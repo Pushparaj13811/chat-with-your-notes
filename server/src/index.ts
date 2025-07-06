@@ -9,6 +9,11 @@ import chatRoutes from './routes/chatRoutes';
 // Load environment variables
 dotenv.config();
 
+// Fix SSL certificate verification issues for Google Generative AI API
+if (process.env.NODE_ENV !== 'production') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
