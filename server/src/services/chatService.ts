@@ -1,6 +1,11 @@
 import { prisma } from '../config/database';
-import { generateResponse } from '../config/gemini';
+import { 
+  generateResponse, 
+  generateConversationSummary, 
+  generateMemoryEnhancedResponse 
+} from '../config/gemini';
 import { findSimilarChunks } from '../utils/textProcessor';
+import { memoryManager } from '../utils/memoryManager';
 import type { Chunk } from '@prisma/client';
 
 export interface ChatRequest {
@@ -11,11 +16,23 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   answer: string;
-  context: any[]; // Consider defining a more specific type for context chunks
+  context: any[];
   chatSessionId: string;
+  shouldSummarize?: boolean;
+  conversationSummary?: string;
+  memoryStats?: {
+    messageCount: number;
+    isSummarized: boolean;
+    memoryEfficiency: number;
+  };
 }
 
-
+export interface ConversationMemory {
+  history: Array<{ role: string; content: string }>;
+  summary?: string;
+  messageCount: number;
+  isSummarized: boolean;
+}
 
 export async function processQuestion(request: ChatRequest): Promise<ChatResponse> {
   const { question, fileIds, chatSessionId: existingSessionId } = request;
@@ -25,7 +42,10 @@ export async function processQuestion(request: ChatRequest): Promise<ChatRespons
 
   // 1. Find or create the chat session
   if (chatSessionId) {
-    session = await prisma.chatSession.findUnique({ where: { id: chatSessionId } });
+    session = await prisma.chatSession.findUnique({ 
+      where: { id: chatSessionId },
+      include: { messages: true }
+    });
   }
 
   if (!session) {
@@ -37,18 +57,20 @@ export async function processQuestion(request: ChatRequest): Promise<ChatRespons
           connect: fileIds.map(id => ({ id })),
         },
       },
+      include: { messages: true }
     });
     chatSessionId = newSession.id;
-  } else if (chatSessionId) {
-    // If session exists, just ensure we use its ID
-    chatSessionId = session.id;
+    session = newSession;
   }
 
   if (!chatSessionId) {
     throw new Error("Could not create or find a chat session.");
   }
 
-  // 2. Store User's Message
+  // 2. Get optimized conversation context using memory manager
+  const optimizedContext = await memoryManager.getOptimizedContext(chatSessionId);
+
+  // 3. Store User's Message
   await prisma.chatMessage.create({
     data: {
       role: 'user',
@@ -57,56 +79,139 @@ export async function processQuestion(request: ChatRequest): Promise<ChatRespons
     },
   });
 
-  // 3. Find Relevant Context
+  // Update message count
+  await prisma.chatSession.update({
+    where: { id: chatSessionId },
+    data: { messageCount: { increment: 1 } }
+  });
+
+  // 4. Find Relevant Context
   const relevantChunks = await findSimilarChunks(question, 5, fileIds);
   const context = relevantChunks.map((chunk: Chunk) => chunk.content).join('\n\n');
 
-  // 4. Generate AI Response
-  const answer = await generateResponse(question, context);
+  // 5. Generate AI Response with Memory
+  let answer: string;
+  let shouldSummarize = optimizedContext.shouldSummarize;
+  let conversationSummary: string | undefined;
 
-  // 5. Store Assistant's Message
+  if (optimizedContext.history.length > 0) {
+    // Use memory-enhanced response for ongoing conversations
+    const memoryResponse = await generateMemoryEnhancedResponse(
+      question,
+      context,
+      optimizedContext.history,
+      20 // maxHistoryLength
+    );
+    
+    answer = memoryResponse.answer;
+    shouldSummarize = shouldSummarize || memoryResponse.shouldSummarize;
+
+    // Check if we should optimize memory
+    if (shouldSummarize) {
+      const optimizationResult = await memoryManager.optimizeMemory(chatSessionId);
+      if (optimizationResult.optimized && optimizationResult.summary) {
+        conversationSummary = optimizationResult.summary;
+      }
+    }
+  } else {
+    // First message in conversation - use regular response
+    answer = await generateResponse(question, context, undefined, optimizedContext.summary);
+  }
+
+  // 6. Store Assistant's Message
   await prisma.chatMessage.create({
     data: {
       role: 'assistant',
       content: answer,
       chatSessionId,
-      context: relevantChunks.map((c: Chunk) => c.content), 
+      context: relevantChunks.map((c: Chunk) => c.content),
     },
   });
+
+  // Update message count again for assistant message
+  await prisma.chatSession.update({
+    where: { id: chatSessionId },
+    data: { messageCount: { increment: 1 } }
+  });
+
+  // 7. Get memory statistics
+  const memoryStats = await memoryManager.getMemoryStats(chatSessionId);
   
   return {
     answer,
     context: relevantChunks.map((chunk) => chunk.content),
     chatSessionId,
+    shouldSummarize,
+    conversationSummary,
+    memoryStats
+  };
+}
+
+export async function getConversationMemory(chatSessionId: string): Promise<ConversationMemory> {
+  const optimizedContext = await memoryManager.getOptimizedContext(chatSessionId);
+  
+  const session = await prisma.chatSession.findUnique({
+    where: { id: chatSessionId },
+    select: { messageCount: true, isSummarized: true }
+  });
+
+  return {
+    history: optimizedContext.history,
+    summary: optimizedContext.summary,
+    messageCount: session?.messageCount || 0,
+    isSummarized: session?.isSummarized || false
   };
 }
 
 export async function getChatHistory(chatSessionId: string) {
-    const messages = await prisma.chatMessage.findMany({
-        where: { chatSessionId },
-        orderBy: { createdAt: 'asc' },
-    });
+  const session = await prisma.chatSession.findUnique({
+    where: { id: chatSessionId },
+    include: { messages: true }
+  });
 
-    // Map messages to ensure context is always string[]
-    return messages.map(msg => {
-        let transformedContext: string[] = [];
-        if (msg.context) {
-            const contextData = msg.context as any; // Cast to any to access properties safely
-            if (contextData.chunks && Array.isArray(contextData.chunks)) {
-                // Old format: { chunks: [{ content: '...' }] }
-                transformedContext = contextData.chunks.map((c: any) => c.content);
-            } else if (Array.isArray(contextData)) {
-                // New format: ['...', '...'] or if it was stored as an array directly
-                transformedContext = contextData.map((c: any) => String(c)); // Ensure elements are strings
-            }
-        }
+  if (!session) {
+    return [];
+  }
 
-        return {
-            ...msg,
-            context: transformedContext,
-        };
-    });
-} 
+  // Get all messages, including summarized ones
+  const messages = await prisma.chatMessage.findMany({
+    where: { chatSessionId },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  // Map messages to ensure context is always string[]
+  const mappedMessages = messages.map(msg => {
+    let transformedContext: string[] = [];
+    if (msg.context) {
+      const contextData = msg.context as any;
+      if (contextData.chunks && Array.isArray(contextData.chunks)) {
+        transformedContext = contextData.chunks.map((c: any) => c.content);
+      } else if (Array.isArray(contextData)) {
+        transformedContext = contextData.map((c: any) => String(c));
+      }
+    }
+
+    return {
+      ...msg,
+      context: transformedContext,
+    };
+  });
+
+  // If conversation is summarized, add summary at the beginning
+  if (session.conversationSummary) {
+    mappedMessages.unshift({
+      id: 'summary',
+      role: 'system',
+      content: `📝 **Conversation Summary**: ${session.conversationSummary}`,
+      createdAt: session.lastSummarizedAt || session.createdAt,
+      chatSessionId,
+      context: [],
+      isSummarized: true
+    } as any);
+  }
+
+  return mappedMessages;
+}
 
 export async function getAllChatSessions() {
   const sessions = await prisma.chatSession.findMany({
@@ -115,16 +220,32 @@ export async function getAllChatSessions() {
       id: true,
       title: true,
       createdAt: true,
+      updatedAt: true,
+      messageCount: true,
+      isSummarized: true,
+      conversationSummary: true,
       files: {
         select: {
           id: true,
-          originalName: true, // Changed from 'name' to 'originalName'
+          originalName: true,
         },
       },
     },
   });
-  return sessions;
-} 
+
+  // Add memory statistics to each session
+  const sessionsWithStats = await Promise.all(
+    sessions.map(async (session) => {
+      const memoryStats = await memoryManager.getMemoryStats(session.id);
+      return {
+        ...session,
+        memoryStats
+      };
+    })
+  );
+
+  return sessionsWithStats;
+}
 
 export async function deleteChatSession(chatSessionId: string) {
   // Delete associated chat messages first due to foreign key constraints
@@ -136,4 +257,39 @@ export async function deleteChatSession(chatSessionId: string) {
   await prisma.chatSession.delete({
     where: { id: chatSessionId },
   });
+}
+
+export async function summarizeConversation(chatSessionId: string): Promise<string> {
+  const optimizationResult = await memoryManager.optimizeMemory(chatSessionId);
+  
+  if (!optimizationResult.optimized) {
+    throw new Error('No conversation history to summarize or conversation already summarized');
+  }
+
+  return optimizationResult.summary || '';
+}
+
+export async function clearConversationMemory(chatSessionId: string) {
+  await prisma.chatSession.update({
+    where: { id: chatSessionId },
+    data: {
+      conversationSummary: null,
+      lastSummarizedAt: null,
+      isSummarized: false,
+      messageCount: 0
+    }
+  });
+
+  await prisma.chatMessage.updateMany({
+    where: { chatSessionId },
+    data: { isSummarized: false }
+  });
+}
+
+export async function getMemoryStats(chatSessionId: string) {
+  return await memoryManager.getMemoryStats(chatSessionId);
+}
+
+export async function cleanupOldMessages(chatSessionId: string, keepRecentCount: number = 10) {
+  return await memoryManager.cleanupOldMessages(chatSessionId, keepRecentCount);
 } 

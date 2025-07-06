@@ -43,12 +43,16 @@ model Chunk {
 }
 
 model ChatSession {
-  id        String        @id @default(cuid())
-  title     String
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  files     File[]        @relation("ChatSessionFiles")
-  messages  ChatMessage[]
+  id                  String        @id @default(cuid())
+  title               String
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  files               File[]        @relation("ChatSessionFiles")
+  messages            ChatMessage[]
+  conversationSummary String?       @db.Text // Summary of the conversation for memory
+  lastSummarizedAt    DateTime?     // When the conversation was last summarized
+  messageCount        Int           @default(0) // Track number of messages for memory management
+  isSummarized        Boolean       @default(false) // Whether the conversation has been summarized
 }
 
 model ChatMessage {
@@ -59,4 +63,5 @@ model ChatMessage {
   chatSessionId String
   chatSession   ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
   context       Json? // Store context chunks or other metadata
+  isSummarized  Boolean     @default(false) // Whether this message is included in summary
 }

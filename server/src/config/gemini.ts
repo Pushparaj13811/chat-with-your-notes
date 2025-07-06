@@ -20,11 +20,31 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   }
 }
 
-export async function generateResponse(prompt: string, context: string): Promise<string> {
+export async function generateResponse(
+  prompt: string, 
+  context: string, 
+  conversationHistory?: Array<{ role: string; content: string }>,
+  conversationSummary?: string
+): Promise<string> {
   try {
+    let conversationContext = '';
+    
+    if (conversationSummary) {
+      conversationContext = `### 📝 Previous Conversation Summary:
+${conversationSummary}
+
+`;
+    } else if (conversationHistory && conversationHistory.length > 0) {
+      const recentHistory = conversationHistory.slice(-6); // Last 6 messages for context
+      conversationContext = `### 💬 Recent Conversation History:
+${recentHistory.map(msg => `${msg.role === 'user' ? '👤 User' : '🤖 Assistant'}: ${msg.content}`).join('\n')}
+
+`;
+    }
+
     const fullPrompt = `You are an AI assistant helping users understand information from a given context.
 
-    Use only the information provided below to answer the question. If the context does not contain enough information, clearly say: "Sorry, I couldn't find enough information in the provided context. if it can be found in the internet then use the internet to find the information and answer the question properly."
+    Use only the information provided below to answer the question. If the context does not contain enough information, clearly say: "Sorry, I couldn't find enough information in the provided context. If it can be found on the internet, please search for it and provide a comprehensive answer."
     
     Please follow these rules when answering:
     - Be concise and clear unless the user asks for a longer response
@@ -32,15 +52,19 @@ export async function generateResponse(prompt: string, context: string): Promise
     - Format your response using Markdown (e.g., **bold**, _italic_, \`code\`, etc.)
     - Do not make up facts
     - Cite any specific part of the context if it supports your answer
+    - If this is a follow-up question, reference previous conversation context when relevant
+    - Maintain consistency with previous answers in the conversation
     
     ---
     
-    ### 🧠 Context:
+    ${conversationContext}
+    
+    ### 🧠 Document Context:
     ${context}
     
     ---
     
-    ### ❓ Question:
+    ### ❓ Current Question:
     ${prompt}
     
     ---
@@ -54,5 +78,104 @@ export async function generateResponse(prompt: string, context: string): Promise
   } catch (error) {
     console.error('Error generating response:', error);
     throw new Error('Failed to generate response');
+  }
+}
+
+export async function generateConversationSummary(
+  conversationHistory: Array<{ role: string; content: string }>
+): Promise<string> {
+  try {
+    if (conversationHistory.length < 4) {
+      return ''; // No need to summarize short conversations
+    }
+
+    const conversationText = conversationHistory
+      .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+      .join('\n');
+
+    const summaryPrompt = `Please provide a concise summary of the following conversation, focusing on:
+1. The main topics discussed
+2. Key questions asked by the user
+3. Important information provided by the assistant
+4. Any ongoing themes or threads
+
+Keep the summary under 200 words and focus on the most relevant information for future context.
+
+Conversation:
+${conversationText}
+
+Summary:`;
+
+    const result = await textModel.generateContent(summaryPrompt);
+    const response = await result.response;
+    return response.text();
+  } catch (error) {
+    console.error('Error generating conversation summary:', error);
+    return ''; // Return empty string if summarization fails
+  }
+}
+
+export async function generateMemoryEnhancedResponse(
+  prompt: string,
+  context: string,
+  conversationHistory: Array<{ role: string; content: string }>,
+  maxHistoryLength: number = 20
+): Promise<{ answer: string; shouldSummarize: boolean }> {
+  try {
+    let shouldSummarize = false;
+    let conversationContext = '';
+    
+    // If conversation is getting long, suggest summarization
+    if (conversationHistory.length > maxHistoryLength) {
+      shouldSummarize = true;
+      // Use only recent history for context
+      const recentHistory = conversationHistory.slice(-8);
+      conversationContext = `### 💬 Recent Conversation (Last ${recentHistory.length} messages):
+${recentHistory.map(msg => `${msg.role === 'user' ? '👤 User' : '🤖 Assistant'}: ${msg.content}`).join('\n')}
+
+⚠️ Note: This conversation is getting long. Consider asking for a summary to maintain context quality.
+
+`;
+    } else {
+      // Use full history for shorter conversations
+      conversationContext = `### 💬 Conversation History:
+${conversationHistory.map(msg => `${msg.role === 'user' ? '👤 User' : '🤖 Assistant'}: ${msg.content}`).join('\n')}
+
+`;
+    }
+
+    const fullPrompt = `You are an AI assistant with memory of the ongoing conversation. Use both the document context and conversation history to provide informed, contextual responses.
+
+    Guidelines:
+    - Reference previous parts of the conversation when relevant
+    - Maintain consistency with your previous answers
+    - If the user asks follow-up questions, use the conversation history for context
+    - Be concise but comprehensive
+    - Use Markdown formatting for better readability
+    - If the conversation is getting long, suggest summarizing it
+    
+    ---
+    
+    ${conversationContext}
+    
+    ### 🧠 Document Context:
+    ${context}
+    
+    ---
+    
+    ### ❓ Current Question:
+    ${prompt}
+    
+    ---
+    
+    ### ✅ Answer:
+    `;
+
+    const result = await textModel.generateContent(fullPrompt);
+    const response = await result.response;
+    return { answer: response.text(), shouldSummarize };
+  } catch (error) {
+    console.error('Error generating memory-enhanced response:', error);
+    throw new Error('Failed to generate memory-enhanced response');
   }
 } 
