@@ -80,6 +80,114 @@ export const uploadFile = async (file: File) => {
   }
 };
 
+// Chunked upload functions
+export const initializeChunkedUpload = async (fileName: string, fileSize: number, mimeType: string) => {
+  try {
+    const response = await api.post('/upload-initialize', {
+      fileName,
+      fileSize,
+      mimeType
+    });
+    
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        throw new Error(
+          error.response.data.message || 
+          'Failed to initialize upload. Please try again.'
+        );
+      } else if (error.request) {
+        throw new Error('No response from server. Please check your connection.');
+      }
+    }
+    
+    throw new Error('Error initializing upload. Please try again.');
+  }
+};
+
+export const uploadChunk = async (
+  chunk: Blob,
+  chunkIndex: number,
+  totalChunks: number,
+  fileName: string,
+  fileSize: number,
+  mimeType: string
+) => {
+  const formData = new FormData();
+  formData.append('chunk', chunk);
+  formData.append('chunkIndex', chunkIndex.toString());
+  formData.append('totalChunks', totalChunks.toString());
+  formData.append('fileName', fileName);
+  formData.append('fileSize', fileSize.toString());
+  formData.append('mimeType', mimeType);
+  
+  try {
+    const response = await api.post('/upload-chunk', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 60000, // Longer timeout for chunk uploads
+      validateStatus: (status) => status >= 200 && status < 300
+    });
+    
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        throw new Error(
+          error.response.data.message || 
+          'Chunk upload failed. Please try again.'
+        );
+      } else if (error.request) {
+        throw new Error('No response from server. Please check your connection.');
+      }
+    }
+    
+    throw new Error('Error uploading chunk. Please try again.');
+  }
+};
+
+export const getChunkProgress = async (chunkDirName: string) => {
+  try {
+    const response = await api.get(`/upload-progress/${chunkDirName}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        throw new Error(
+          error.response.data.message || 
+          'Failed to get upload progress.'
+        );
+      } else if (error.request) {
+        throw new Error('No response from server. Please check your connection.');
+      }
+    }
+    
+    throw new Error('Error getting upload progress. Please try again.');
+  }
+};
+
+export const cancelChunkedUpload = async (chunkDirName: string) => {
+  try {
+    const response = await api.delete(`/upload-cancel/${chunkDirName}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        throw new Error(
+          error.response.data.message || 
+          'Failed to cancel upload.'
+        );
+      } else if (error.request) {
+        throw new Error('No response from server. Please check your connection.');
+      }
+    }
+    
+    throw new Error('Error canceling upload. Please try again.');
+  }
+};
+
 // Get all files
 export const getFiles = async () => {
   try {

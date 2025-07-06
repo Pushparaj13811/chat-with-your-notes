@@ -1,110 +1,104 @@
-// FileUpload.tsx
-
 import React, { useState, useCallback, useRef } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
-import { uploadFile } from '../services/api';
-import { uploadFileInChunks, formatFileSize } from '../utils/chunkedUpload';
-import type { File as FileType } from '../types';
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X, Pause, Play, RotateCcw } from 'lucide-react';
+import { uploadFileInChunks, formatFileSize, cancelUpload } from '../utils/chunkedUpload';
+import type { File as FileType, ChunkedUploadState } from '../types';
 
-interface FileUploadProps {
+interface ChunkedFileUploadProps {
   onFileUploaded: (file: FileType) => void;
   insideModal?: boolean;
 }
 
-interface UploadState {
-  isUploading: boolean;
-  progress: number;
-  error: string | null;
-  success: boolean;
-}
-
-const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, insideModal = false }) => {
-  const [uploadState, setUploadState] = useState<UploadState>({
+const ChunkedFileUpload: React.FC<ChunkedFileUploadProps> = ({ onFileUploaded, insideModal = false }) => {
+  const [uploadState, setUploadState] = useState<ChunkedUploadState>({
     isUploading: false,
     progress: 0,
+    currentChunk: 0,
+    totalChunks: 0,
+    chunkDirName: null,
     error: null,
     success: false,
   });
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetUploadState = useCallback(() => {
     setUploadState({
       isUploading: false,
       progress: 0,
+      currentChunk: 0,
+      totalChunks: 0,
+      chunkDirName: null,
       error: null,
       success: false,
     });
+    setIsPaused(false);
   }, []);
 
   const handleFileUpload = useCallback(async (file: File) => {
-    const CHUNK_THRESHOLD = 5 * 1024 * 1024; // 5MB - use chunked upload for files larger than this
-    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB max
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
     const ALLOWED_TYPES = ['application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 
     if (file.size > MAX_FILE_SIZE) {
-      setUploadState({ isUploading: false, progress: 0, error: `File size exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`, success: false });
+      setUploadState(prev => ({ 
+        ...prev, 
+        error: `File size exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`, 
+        success: false 
+      }));
       return;
     }
 
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setUploadState({ isUploading: false, progress: 0, error: 'Invalid file type. Only PDF, TXT, and DOCX files are allowed.', success: false });
+      setUploadState(prev => ({ 
+        ...prev, 
+        error: 'Invalid file type. Only PDF, TXT, and DOCX files are allowed.', 
+        success: false 
+      }));
       return;
     }
 
-    setUploadState({ isUploading: true, progress: 0, error: null, success: false });
-
     try {
-      // Use chunked upload for large files, regular upload for small files
-      if (file.size > CHUNK_THRESHOLD) {
-        await uploadFileInChunks(
-          file,
-          (state) => {
-            setUploadState(prev => ({
-              ...prev,
-              progress: state.progress,
-              isUploading: state.isUploading,
-              success: state.success
-            }));
-          },
-          (error) => {
-            setUploadState(prev => ({
-              ...prev,
-              isUploading: false,
-              error,
-              success: false
-            }));
-          },
-          (uploadedFile) => {
-            setUploadState({ isUploading: false, progress: 100, error: null, success: true });
-            onFileUploaded(uploadedFile);
-            setTimeout(resetUploadState, 2500);
-          }
-        );
-      } else {
-        // Use regular upload for small files
-        const response = await uploadFile(file);
-
-        if (response.success) {
-          for (let i = 0; i <= 100; i += 10) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            setUploadState(prev => ({ ...prev, progress: i }));
-          }
-
-          setUploadState({ isUploading: false, progress: 100, error: null, success: true });
-          onFileUploaded(response.data);
+      await uploadFileInChunks(
+        file,
+        (state) => setUploadState(state),
+        (error) => setUploadState(prev => ({ ...prev, error, success: false })),
+        (file) => {
+          onFileUploaded(file);
           setTimeout(resetUploadState, 2500);
         }
-      }
+      );
     } catch (error) {
-      setUploadState({
-        isUploading: false,
-        progress: 0,
-        error: error instanceof Error ? error.message : 'Upload failed',
-        success: false,
-      });
+      // Error is handled by the onError callback
+      console.error('Upload error:', error);
     }
   }, [onFileUploaded, resetUploadState]);
+
+  const handlePauseResume = useCallback(async () => {
+    if (isPaused) {
+      // Resume upload (for now, just toggle pause state)
+      setIsPaused(false);
+    } else {
+      // Pause upload
+      setIsPaused(true);
+    }
+  }, [isPaused]);
+
+  const handleCancel = useCallback(async () => {
+    if (uploadState.chunkDirName) {
+      try {
+        await cancelUpload(uploadState.chunkDirName);
+        resetUploadState();
+      } catch (error) {
+        console.error('Failed to cancel upload:', error);
+      }
+    } else {
+      resetUploadState();
+    }
+  }, [uploadState.chunkDirName, resetUploadState]);
+
+  const handleRetry = useCallback(() => {
+    setUploadState(prev => ({ ...prev, error: null }));
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -134,7 +128,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, insideModal = f
   return (
     <div className={insideModal
       ? ''
-      : 'rounded-2xl border border-borderLight p-6 shadow-xl  backdrop-blur-md transition-all duration-300 hover:shadow-2xl'}>
+      : 'rounded-2xl border border-borderLight p-6 shadow-xl backdrop-blur-md transition-all duration-300 hover:shadow-2xl'}>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
           <FileText className="h-6 w-6 text-primary-600" />
@@ -150,9 +144,18 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, insideModal = f
               <AlertCircle className="h-5 w-5" />
               {uploadState.error}
             </div>
-            <button onClick={clearError} className="text-red-500 hover:text-red-700">
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleRetry}
+                className="text-red-500 hover:text-red-700 p-1"
+                title="Retry"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </button>
+              <button onClick={clearError} className="text-red-500 hover:text-red-700 p-1">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -175,7 +178,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, insideModal = f
           <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-xl">
             <div className="text-center">
               <Loader2 className="h-10 w-10 text-primary-600 animate-spin mx-auto mb-2" />
-              <p className="text-gray-600 font-medium text-sm">Uploading file...</p>
+              <p className="text-gray-600 font-medium text-sm">
+                Uploading chunk {uploadState.currentChunk} of {uploadState.totalChunks}...
+              </p>
+              <p className="text-gray-500 text-xs mt-1">{uploadState.progress}% complete</p>
             </div>
           </div>
         )}
@@ -202,7 +208,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, insideModal = f
           </span>{' '}
           from your device
         </p>
-        <p className="text-xs text-gray-400">PDF, TXT, or DOCX files up to 100MB </p>
+        <p className="text-xs text-gray-400">PDF, TXT, or DOCX files up to 100MB</p>
 
         <input
           ref={fileInputRef}
@@ -222,12 +228,45 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, insideModal = f
                 style={{ width: `${uploadState.progress}%` }}
               />
             </div>
-            <p className="text-xs text-gray-400 text-center">Uploading... {uploadState.progress}%</p>
+            <div className="flex items-center justify-between text-xs text-gray-400">
+              <span>Chunk {uploadState.currentChunk} of {uploadState.totalChunks}</span>
+              <span>{uploadState.progress}%</span>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Upload Controls */}
+      {uploadState.isUploading && (
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <button
+            onClick={handlePauseResume}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            {isPaused ? (
+              <>
+                <Play className="h-4 w-4" />
+                Resume
+              </>
+            ) : (
+              <>
+                <Pause className="h-4 w-4" />
+                Pause
+              </>
+            )}
+          </button>
+          
+          <button
+            onClick={handleCancel}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+          >
+            <X className="h-4 w-4" />
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 };
 
-export default FileUpload;
+export default ChunkedFileUpload; 

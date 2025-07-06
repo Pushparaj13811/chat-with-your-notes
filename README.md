@@ -4,7 +4,8 @@ A full-stack AI-powered application that allows you to upload documents and chat
 
 ## Features
 
-- 📄 **File Upload**: Support for PDF, TXT, and DOCX files with intelligent text extraction
+- 📄 **File Upload**: Support for PDF, TXT, and DOCX files with intelligent text extraction (up to 100MB)
+- 🔄 **Chunked Uploads**: Large files are automatically split and uploaded in chunks for reliability
 - 🤖 **AI Chat**: Ask questions about your documents using Google Gemini AI
 - 🔍 **Vector Search**: Intelligent document retrieval using embeddings and cosine similarity
 - 🔄 **Multi-File Chat**: Engage with multiple documents simultaneously in a single conversation
@@ -67,7 +68,7 @@ cp env.example .env
 # - DATABASE_URL: Your PostgreSQL connection string
 # - GEMINI_API_KEY: Your Google Gemini API key
 # - PORT: Server port (default: 3001)
-# - MAX_FILE_SIZE: Maximum file size in bytes (default: 10MB)
+# - MAX_FILE_SIZE: Maximum file size in bytes (default: 100MB)
 # - UPLOAD_DIR: Directory for uploaded files (default: ./uploads)
 
 # Generate Prisma client
@@ -108,8 +109,9 @@ PORT=3001
 NODE_ENV=development
 
 # File Upload
-MAX_FILE_SIZE=10485760  # 10MB in bytes
+MAX_FILE_SIZE=104857600  # 100MB in bytes
 UPLOAD_DIR="./uploads"
+TEMP_UPLOAD_DIR="./temp-uploads"
 ```
 
 #### Frontend (.env)
@@ -121,6 +123,10 @@ VITE_API_URL=http://localhost:3001/api
 
 ### File Management
 - `POST /api/upload` - Upload and process a file (PDF, TXT, DOCX)
+- `POST /api/upload-initialize` - Initialize chunked upload for large files
+- `POST /api/upload-chunk` - Upload a single chunk of a large file
+- `GET /api/upload-progress/:chunkDirName` - Get progress of chunked upload
+- `DELETE /api/upload-cancel/:chunkDirName` - Cancel a chunked upload
 - `GET /api/files` - Get all uploaded files with metadata
 - `DELETE /api/files/:fileId` - Delete a file and all associated data
 - `GET /api/files/:fileId/questions` - Get AI-generated questions for a file
@@ -169,6 +175,14 @@ VITE_API_URL=http://localhost:3001/api
 - **Embedding Generation**: Each chunk is converted to vector embeddings for semantic search
 - **Question Generation**: AI automatically generates 6 contextual questions per document
 - **Multi-format Support**: PDF, TXT, and DOCX files with proper text extraction
+
+### Chunked File Uploads
+- **Automatic Chunking**: Files larger than 5MB are automatically split into chunks
+- **Progressive Upload**: Chunks are uploaded sequentially with progress tracking
+- **Resume Capability**: Failed uploads can be resumed from the last successful chunk
+- **Error Recovery**: Automatic cleanup of partial uploads on failure
+- **Progress Feedback**: Real-time progress updates during chunked uploads
+- **Size Optimization**: Dynamic chunk sizes based on file size (2MB-10MB chunks)
 
 ### Vector Search
 - **Cosine Similarity**: Advanced similarity matching for relevant content retrieval

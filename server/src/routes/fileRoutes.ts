@@ -3,6 +3,13 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
 import { uploadFile, getFiles, removeFile, generateFileQuestions } from '../controllers/fileController';
+import { 
+  uploadChunk, 
+  getChunkProgress, 
+  cancelChunkedUpload, 
+  initializeChunkedUpload,
+  chunkUpload 
+} from '../controllers/chunkedUploadController';
 import { requireDeviceId, requireDeviceOwnership } from '../middleware/deviceAuth';
 
 const router = Router();
@@ -57,6 +64,13 @@ const upload = multer({
 
 // Routes with device authentication
 router.post('/upload', requireDeviceId, upload.single('file') as any, uploadFile);
+
+// Chunked upload routes
+router.post('/upload-chunk', requireDeviceId, chunkUpload.single('chunk') as any, uploadChunk);
+router.get('/upload-progress/:chunkDirName', requireDeviceId, getChunkProgress);
+router.delete('/upload-cancel/:chunkDirName', requireDeviceId, cancelChunkedUpload);
+router.post('/upload-initialize', requireDeviceId, initializeChunkedUpload);
+
 router.get('/files', requireDeviceId, getFiles);
 router.delete('/files/:fileId', requireDeviceId, requireDeviceOwnership('file'), removeFile);
 router.get('/files/:fileId/questions', requireDeviceId, requireDeviceOwnership('file'), generateFileQuestions);

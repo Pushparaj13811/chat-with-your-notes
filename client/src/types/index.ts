@@ -67,6 +67,39 @@ export interface UploadResponse {
   size: number;
 }
 
+export interface ChunkedUploadInitResponse {
+  chunkSize: number;
+  totalChunks: number;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+}
+
+export interface ChunkedUploadProgress {
+  uploaded: number;
+  total: number;
+  percentage: number;
+}
+
+export interface ChunkedUploadResponse {
+  chunkDirName: string;
+  progress: ChunkedUploadProgress;
+  completed: boolean;
+  fileId?: string;
+  filename?: string;
+  size?: number;
+}
+
+export interface ChunkedUploadState {
+  isUploading: boolean;
+  progress: number;
+  currentChunk: number;
+  totalChunks: number;
+  chunkDirName: string | null;
+  error: string | null;
+  success: boolean;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string;

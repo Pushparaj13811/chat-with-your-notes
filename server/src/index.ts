@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import fileRoutes from './routes/fileRoutes';
 import chatRoutes from './routes/chatRoutes';
+import { cleanupOldChunks } from './services/chunkedUploadService';
 
 // Load environment variables
 dotenv.config();
@@ -97,6 +98,16 @@ async function startServer() {
             console.log(`📁 File upload: http://localhost:${PORT}/api/upload`);
             console.log(`💬 Chat endpoint: http://localhost:${PORT}/api/ask`);
         });
+
+        // Set up periodic cleanup of old chunks (every 6 hours)
+        setInterval(async () => {
+            try {
+                await cleanupOldChunks();
+                console.log('🧹 Cleaned up old chunk directories');
+            } catch (error) {
+                console.error('Error cleaning up old chunks:', error);
+            }
+        }, 6 * 60 * 60 * 1000); // 6 hours
 
     } catch (error) {
         console.error('❌ Failed to start server:', error);
