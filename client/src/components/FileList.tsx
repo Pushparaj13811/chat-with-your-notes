@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FileText, Trash2, Loader2, ServerCrash, Inbox, CheckSquare, Square } from 'lucide-react';
+import { Trash2, Loader2, ServerCrash, Inbox, CheckSquare, Square } from 'lucide-react';
 import { getFiles, deleteFile } from '../services/api';
 import type { File as FileType } from '../types';
 
@@ -106,13 +106,12 @@ const FileList: React.FC<FileListProps> = ({ selectedFileIds, onSelectionChange,
                     return (
                         <div
                             key={file.id}
-                            className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-all duration-200 group 
-                                ${isSelected ? 'bg-primary-50 border border-primary-300 text-primary-800 shadow-custom-sm' : 'bg-white border border-borderLight hover:bg-gray-50 hover:border-gray-200 text-gray-700'}
+                            className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all duration-200 group 
+                                ${isSelected ? 'bg-primary-50  text-primary-800 shadow-custom-sm' : 'bg-white border border-borderLight hover:bg-gray-50 hover:border-gray-200 text-gray-700'}
                             `}
                             onClick={() => handleFileSelect(file)}
                         >
                             {isSelected ? <CheckSquare className="h-5 w-5 text-primary-600 flex-shrink-0" /> : <Square className="h-5 w-5 text-gray-400 flex-shrink-0" />}
-                            <FileText className={`h-5 w-5 ${isSelected ? 'text-primary-600' : 'text-gray-500'} flex-shrink-0`} />
                             <div className="flex-1 min-w-0">
                                 <h3 className="font-medium truncate">
                                     {file.originalName}
