@@ -19,7 +19,12 @@ export async function processAndStoreFile(uploadedFile: UploadedFile): Promise<s
     // Generate 6 questions from the file content (only at upload time)
     let questions: string[] = [];
     if (text && text.trim().length > 100) {
-      const prompt = `You are an expert reader. Analyze the following document and generate 6 thought-provoking, insightful, and contextually relevant questions that a user could ask based on the document's content. The questions should reflect the actual structure, concepts, and ideas presented in the document. Avoid vague or overly broad questions. Output only the 6 questions as a numbered Markdown list.\n\n---\n\nDocument Content:\n${text.substring(0, 8000)}\n\n---`;
+      const prompt = `You are an expert reader. Analyze the following document and generate 6 thought-provoking, insightful, and contextually relevant questions that a user could ask based on the document's content. Each question should reflect the actual structure, concepts, and ideas presented in the document, and must be no more than 80 characters long. Avoid vague or overly broad questions. Output only the 6 questions as a numbered Markdown list.
+      ---
+      Document Content:
+      ${text.substring(0, 8000)}
+      ---`;
+
       try {
         const result = await textModel.generateContent(prompt);
         const response = await result.response;
@@ -73,25 +78,25 @@ export async function findSimilarChunks(query: string, limit: number = 5): Promi
   try {
     // Generate embedding for the query
     const queryEmbedding = await generateEmbedding(query);
-    
+
     // Get all chunks with their embeddings
     const chunks = await prisma.chunk.findMany({
       include: {
         file: true
       }
     });
-    
+
     // Calculate similarity scores
     const chunksWithScores = chunks.map((chunk: any) => ({
       ...chunk,
       similarity: calculateCosineSimilarity(queryEmbedding, chunk.embedding)
     }));
-    
+
     // Sort by similarity and return top results
     return chunksWithScores
       .sort((a: any, b: any) => b.similarity - a.similarity)
       .slice(0, limit);
-      
+
   } catch (error) {
     console.error('Error finding similar chunks:', error);
     throw new Error('Failed to find similar chunks');
@@ -102,24 +107,24 @@ function calculateCosineSimilarity(vecA: number[], vecB: number[]): number {
   if (vecA.length !== vecB.length) {
     throw new Error('Vectors must have the same length');
   }
-  
+
   let dotProduct = 0;
   let normA = 0;
   let normB = 0;
-  
+
   for (let i = 0; i < vecA.length; i++) {
     dotProduct += vecA[i] * vecB[i];
     normA += vecA[i] * vecA[i];
     normB += vecB[i] * vecB[i];
   }
-  
+
   normA = Math.sqrt(normA);
   normB = Math.sqrt(normB);
-  
+
   if (normA === 0 || normB === 0) {
     return 0;
   }
-  
+
   return dotProduct / (normA * normB);
 }
 
@@ -149,23 +154,23 @@ export async function deleteFile(fileId: string): Promise<void> {
     const file = await prisma.file.findUnique({
       where: { id: fileId }
     });
-    
+
     if (!file) {
       throw new Error('File not found');
     }
-    
+
     // Delete file from filesystem
     try {
       await fs.unlink(file.path);
     } catch (fsError) {
       console.warn('Could not delete file from filesystem:', fsError);
     }
-    
+
     // Delete from database (chunks and conversations will be deleted via cascade)
     await prisma.file.delete({
       where: { id: fileId }
     });
-    
+
   } catch (error) {
     console.error('Error deleting file:', error);
     throw new Error('Failed to delete file');
