@@ -245,7 +245,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
                 I've analyzed your selected document and I'm ready to help you explore its contents. 
                 Ask me anything or try one of these example questions to get started!
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
+              <div className="grid grid-cols-1 gap-3 mb-8">
                 {questionsLoading ? (
                   <div className="col-span-2 flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 text-primary-500 animate-spin mr-2" />
@@ -256,14 +256,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
                     <button
                       key={index}
                       onClick={() => handleExampleQuestionClick(question)}
-                      className="p-4 text-left bg-white border border-gray-200 rounded-xl hover:border-primary-300 hover:bg-primary-50 hover:shadow-md transition-all duration-200 group"
+                      className="p-4 text-left border-b-2 border-gray-200 hover:border-primary-300 hover:bg-primary-50 hover:rounded-xl transition-all duration-200 group"
                       disabled={isLoading}
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-6 h-6 bg-primary-100 rounded-full flex items-center justify-center mt-0.5">
                           <span className="text-xs font-semibold text-primary-600">{index + 1}</span>
                         </div>
-                        <p className="text-sm text-gray-700 group-hover:text-primary-700 font-medium leading-relaxed">
+                        <p className="text-sm text-primary-700 justify-around font-medium leading-relaxed">
                           {question}
                         </p>
                       </div>
