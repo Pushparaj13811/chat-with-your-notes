@@ -133,8 +133,8 @@ const FileList: React.FC<FileListProps> = ({ selectedFileIds, onSelectionChange,
     };
 
     return (
-        <div className="bg-white rounded-lg p-3 h-full flex flex-col shadow-custom-sm">
-            <h2 className="text-base font-semibold text-gray-800 mb-3 flex-shrink-0">Your Documents</h2>
+        <div className="p-4 h-full flex flex-col">
+            <h2 className="text-base font-semibold text-gray-700 mb-4 flex-shrink-0">Your Documents</h2>
             <div className="flex-grow overflow-y-auto pr-1">
                 {renderContent()}
             </div>

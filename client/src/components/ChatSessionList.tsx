@@ -61,25 +61,25 @@ const ChatSessionList: React.FC<ChatSessionListProps> = ({ onSelectSession, sele
   };
 
   return (
-    <div className="bg-white rounded-lg p-3 h-full flex flex-col shadow-custom-sm">
-      <h2 className="text-base font-semibold text-gray-800 mb-3 flex-shrink-0">Chat Sessions</h2>
+    <div className=" rounded-xl p-4 h-full flex flex-col">
+      <h2 className="text-base font-semibold text-gray-700 mb-4 flex-shrink-0">Chat Sessions</h2>
       <button
         onClick={onNewChat}
-        className="flex items-center justify-center gap-2 w-full px-4 py-2 mb-4 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors shadow-custom-md"
+        className="flex items-center justify-center gap-2 w-full px-4 py-2 mb-6 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-custom-md text-sm font-medium"
       >
         <PlusCircle className="h-5 w-5" />
         New Chat
       </button>
-      <div className="flex-1 overflow-y-auto space-y-2">
+      <div className="flex-1 overflow-y-auto space-y-3">
         {isLoading && (
           <div className="text-center py-6">
             <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary-600 mx-auto mb-2" />
-            <p className="text-gray-500 text-sm">Loading sessions...</p>
+            <p className="text-gray-400 text-sm">Loading sessions...</p>
           </div>
         )}
         {error && (
           <div className="text-center py-6 px-3 bg-red-50 rounded-lg border border-red-200">
-            <div className="h-7 w-7 text-red-500 mx-auto mb-2">!</div> {/* Placeholder for ServerCrash icon */}
+            <div className="h-7 w-7 text-red-500 mx-auto mb-2">!</div>
             <p className="font-semibold text-red-700 text-sm">Error loading sessions</p>
             <p className="text-xs text-red-600 mb-3">{error}</p>
             <button onClick={fetchSessions} className="text-xs text-primary-600 font-semibold hover:underline">
@@ -89,9 +89,9 @@ const ChatSessionList: React.FC<ChatSessionListProps> = ({ onSelectSession, sele
         )}
         {!isLoading && sessions.length === 0 && (
           <div className="text-center py-6 px-3 border-2 border-dashed border-gray-200 rounded-lg">
-            <Inbox className="h-7 w-7 text-gray-400 mx-auto mb-2" />
-            <p className="font-semibold text-gray-700 text-sm">No chat sessions yet</p>
-            <p className="text-xs text-gray-500">Start a new chat to create your first session.</p>
+            <Inbox className="h-7 w-7 text-gray-300 mx-auto mb-2" />
+            <p className="font-semibold text-gray-500 text-sm">No chat sessions yet</p>
+            <p className="text-xs text-gray-400">Start a new chat to create your first session.</p>
           </div>
         )}
         {
@@ -100,7 +100,7 @@ const ChatSessionList: React.FC<ChatSessionListProps> = ({ onSelectSession, sele
               key={session.id}
               onClick={() => handleSessionClick(session)}
               className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-all duration-200 group 
-                ${selectedSessionId === session.id ? 'bg-primary-50 border border-primary-300 text-primary-800 shadow-custom-sm' : 'bg-white border border-borderLight hover:bg-gray-50 hover:border-gray-200 text-gray-700'}
+                ${selectedSessionId === session.id ? 'bg-primary-50 border border-primary-200 text-primary-800 shadow-custom-sm' : 'bg-white border border-borderLight hover:bg-gray-50 hover:border-gray-200 text-gray-700'}
               `}
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -108,7 +108,7 @@ const ChatSessionList: React.FC<ChatSessionListProps> = ({ onSelectSession, sele
                 <span className="font-medium truncate">{session.title || 'Untitled Session'}</span>
               </div>
               {session.files.length > 0 && (
-                <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
+                <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
                   ({session.files.map(f => f.originalName).join(', ')})
                 </span>
               )}

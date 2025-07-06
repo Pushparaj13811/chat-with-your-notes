@@ -123,7 +123,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
     const Icon = isUser ? User : Bot;
 
     return (
-      <div key={msg.id} className={`flex items-start gap-4 ${isUser ? 'justify-end' : ''}`}>
+      <div key={msg.id} className={`flex items-start gap-4 justify-center`}>
         {/* AI icon on the left for AI messages */}
         {!isUser && (
           <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${msg.isError ? 'bg-red-100' : 'bg-primary-50'}`}>
@@ -182,27 +182,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
 
   if (selectedFileIds.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center bg-white rounded-lg border border-borderLight shadow-custom-md p-6">
-        <FileWarning className="h-14 w-14 text-gray-400 mb-4" />
-        <h3 className="text-xl font-semibold text-gray-700">No File Selected</h3>
-        <p className="text-gray-500 mt-2">Please select a document from the sidebar to start a conversation.</p>
+      <div className="flex flex-col items-center justify-center h-full text-center bg-white rounded-xl border border-borderLight shadow-custom-md p-10">
+        <FileWarning className="h-14 w-14 text-gray-300 mb-4" />
+        <h3 className="text-lg font-semibold text-gray-500">No File Selected</h3>
+        <p className="text-gray-400 mt-2">Please select a document from the sidebar to start a conversation.</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-xl shadow-custom-lg overflow-hidden">
-      <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+    <div className="flex flex-col h-full rounded-tl-lg overflow-hidden border border-borderLight">
+      <div className="flex-1 p-8 space-y-6 overflow-y-auto">
         {error && (
-          <div className="text-center text-red-500 bg-red-100 p-3 rounded-lg border border-red-200">
+          <div className="text-center text-red-500 bg-red-50 p-3 rounded-lg border border-red-100">
             {error}
           </div>
         )}
 
         {messages.length === 0 && !isLoading && (
           <div className="text-center py-10">
-            <Bot className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-500">
+            <Bot className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-400">
               Ask me anything about the selected document!
             </p>
           </div>
@@ -216,7 +216,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
               <Bot className="h-6 w-6 text-primary-700" />
             </div>
             <div className="w-full max-w-3xl p-4 rounded-2xl bg-white border border-borderLight text-gray-800 rounded-br-3xl rounded-tl-3xl rounded-bl-md shadow-chat-bubble">
-              <p className="animate-pulse text-gray-600">Thinking...</p>
+              <p className="animate-pulse text-gray-400">Thinking...</p>
             </div>
           </div>
         )}
@@ -234,7 +234,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           placeholder="Ask a question about your document..."
-          className="flex-1 py-2 px-4 bg-gray-100 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+          className="flex-1 py-2 px-4 bg-gray-100 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-transparent transition-all text-sm"
           disabled={isLoading || selectedFileIds.length === 0}
         />
         <button

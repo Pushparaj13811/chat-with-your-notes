@@ -51,66 +51,66 @@ function App() {
   }, [selectedChatSessionId, setSelectedFileIds, setSelectedFileIdsForSession, setCurrentView]);
 
   return (
-    <div className="flex h-screen bg-backgroundLight font-sans text-gray-800">
+    <div className="flex h-screen bg-white font-sans text-gray-800">
       {/* Sidebar */}
-      <div className="w-72 bg-white border-r border-borderLight flex flex-col shadow-sidebar rounded-r-xl overflow-hidden">
-        <div className="p-4 border-b border-borderLight">
-          <h1 className="text-2xl font-bold text-primary-700">Chat with Your Notes</h1>
+      <aside className="w-64 flex flex-col shadow-sidebar overflow-hidden">
+        <div className="px-6 pt-8">
+          <h1 className="text-xl font-semibold text-primary-700 tracking-tight mb-4">Chat with Your Notes</h1>
         </div>
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="p-4 border-b border-borderLight flex justify-between gap-2">
-            <button
-              onClick={() => setCurrentView('files')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md transition-colors ${currentView === 'files' ? 'bg-primary-100 text-primary-800 font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              <Files className="h-5 w-5" />
-              Files
-            </button>
-            <button
-              onClick={() => setCurrentView('history')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md transition-colors ${currentView === 'history' ? 'bg-primary-100 text-primary-800 font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              <History className="h-5 w-5" />
-              History
-            </button>
-          </div>
-          <div className="p-4 border-b border-borderLight">
-            <button
-              onClick={() => setIsUploadModalOpen(true)}
-              className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors shadow-custom-md"
-            >
-              <UploadCloud className="h-5 w-5" />
-              Upload Document
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto pt-2 pb-4 px-4">
-            {currentView === 'files' ? (
-              <FileList 
-                key={refreshFileList ? 'refresh' : 'no-refresh'} 
-                selectedFileIds={selectedFileIds} 
-                onSelectionChange={handleFileSelectionChange} 
-                onFileUploaded={handleFileUploaded} 
-              />
-            ) : (
-              <ChatSessionList 
-                onSelectSession={handleSelectSession}
-                selectedSessionId={selectedChatSessionId}
-                onNewChat={handleNewChat}
-                onSessionDeleted={handleDeleteSession}
-              />
-            )}
-          </div>
+        <div className="px-4 mb-4">
+          <button
+            onClick={() => setIsUploadModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white font-medium shadow-custom-md hover:bg-primary-700 transition-colors text-sm"
+          >
+            <UploadCloud className="h-5 w-5" />
+            Upload Document
+          </button>
         </div>
-      </div>
+        <nav className="flex flex-row gap-2 px-4">
+          <button
+            onClick={() => setCurrentView('files')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${currentView === 'files' ? 'bg-primary-50 text-primary-800 shadow-custom-sm' : 'text-gray-500 hover:bg-gray-100'}`}
+            aria-current={currentView === 'files' ? 'page' : undefined}
+          >
+            <Files className="h-5 w-5" />
+            Files
+          </button>
+          <button
+            onClick={() => setCurrentView('history')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${currentView === 'history' ? 'bg-primary-50 text-primary-800 shadow-custom-sm' : 'text-gray-500 hover:bg-gray-100'}`}
+            aria-current={currentView === 'history' ? 'page' : undefined}
+          >
+            <History className="h-5 w-5" />
+            History
+          </button>
+        </nav>
+        <div className="flex-1 overflow-y-auto px-2 pb-6">
+          {currentView === 'files' ? (
+            <FileList 
+              key={refreshFileList ? 'refresh' : 'no-refresh'} 
+              selectedFileIds={selectedFileIds} 
+              onSelectionChange={handleFileSelectionChange} 
+              onFileUploaded={handleFileUploaded} 
+            />
+          ) : (
+            <ChatSessionList 
+              onSelectSession={handleSelectSession}
+              selectedSessionId={selectedChatSessionId}
+              onNewChat={handleNewChat}
+              onSessionDeleted={handleDeleteSession}
+            />
+          )}
+        </div>
+      </aside>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col p-6">
-        <ChatInterface 
-          selectedFileIds={selectedFileIdsForSession.length > 0 ? selectedFileIdsForSession : selectedFileIds} 
-          chatSessionId={selectedChatSessionId} 
-          onSessionCreated={handleSessionCreated} 
-        />
-      </div>
+      <main className="flex-1 flex flex-col mt-4 bg-backgroundLight">
+          <ChatInterface 
+            selectedFileIds={selectedFileIdsForSession.length > 0 ? selectedFileIdsForSession : selectedFileIds} 
+            chatSessionId={selectedChatSessionId} 
+            onSessionCreated={handleSessionCreated} 
+          />
+      </main>
 
       <UploadModal 
         isOpen={isUploadModalOpen} 
