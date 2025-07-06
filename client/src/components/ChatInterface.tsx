@@ -224,7 +224,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
   }
 
   return (
-    <div className="flex flex-col h-full rounded-tl-lg overflow-hidden border border-borderLight">
+    <div className="flex flex-col h-full rounded-tl-lg overflow-hidden bg-primary-50 border border-borderLight">
       <div className="flex-1 p-8 space-y-6 overflow-y-auto">
         {error && (
           <div className="text-center text-red-500 bg-red-50 p-3 rounded-lg border border-red-100">

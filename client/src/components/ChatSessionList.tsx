@@ -70,7 +70,7 @@ const ChatSessionList: React.FC<ChatSessionListProps> = ({ onSelectSession, sele
         <PlusCircle className="h-5 w-5" />
         New Chat
       </button>
-      <div className="flex-1 overflow-hidden space-y-3">
+      <div className="flex-1 overflow-hidden space-y-1">
         {isLoading && (
           <div className="text-center py-6">
             <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary-600 mx-auto mb-2" />
@@ -99,8 +99,8 @@ const ChatSessionList: React.FC<ChatSessionListProps> = ({ onSelectSession, sele
             <div
               key={session.id}
               onClick={() => handleSessionClick(session)}
-              className={`flex items-center px-2 rounded-lg cursor-pointer transition-all duration-200 group 
-                ${selectedSessionId === session.id ? 'bg-primary-50 text-primary-800 shadow-custom-sm' : 'bg-white hover:bg-gray-50 hover:border-gray-200 text-gray-700'}
+              className={`flex items-center p-2 rounded-lg cursor-pointer transition-all duration-200 group 
+                ${selectedSessionId === session.id ? 'bg-primary-50 text-primary-800 shadow-custom-sm' : ' hover:bg-gray-50 hover:border-gray-200 text-gray-700'}
               `}
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
