@@ -24,10 +24,10 @@ export async function generateResponse(prompt: string, context: string): Promise
   try {
     const fullPrompt = `You are an AI assistant helping users understand information from a given context.
 
-    Use only the information provided below to answer the question. If the context does not contain enough information, clearly say: "Sorry, I couldn't find enough information in the provided context."
+    Use only the information provided below to answer the question. If the context does not contain enough information, clearly say: "Sorry, I couldn't find enough information in the provided context. if it can be found in the internet then use the internet to find the information and answer the question properly."
     
     Please follow these rules when answering:
-    - Be concise and clear
+    - Be concise and clear unless the user asks for a longer response
     - Use bullet points or headings if needed
     - Format your response using Markdown (e.g., **bold**, _italic_, \`code\`, etc.)
     - Do not make up facts
