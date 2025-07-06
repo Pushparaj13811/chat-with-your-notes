@@ -24,7 +24,6 @@ This is the backend server for the "Chat with Your Notes" application, responsib
 - **File Processing**: 
     - `pdf-parse` for PDF extraction
     - `mammoth` for DOCX extraction
-    - LangChain (for `RecursiveCharacterTextSplitter`)
 - **File Uploads**: Multer
 - **Environment Management**: `dotenv`
 
