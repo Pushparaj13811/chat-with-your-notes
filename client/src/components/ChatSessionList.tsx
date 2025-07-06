@@ -70,7 +70,7 @@ const ChatSessionList: React.FC<ChatSessionListProps> = ({ onSelectSession, sele
         <PlusCircle className="h-5 w-5" />
         New Chat
       </button>
-      <div className="flex-1 overflow-hidden space-y-1">
+      <div className="flex-1 overflow-x-hidden space-y-1">
         {isLoading && (
           <div className="text-center py-6">
             <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-primary-600 mx-auto mb-2" />
