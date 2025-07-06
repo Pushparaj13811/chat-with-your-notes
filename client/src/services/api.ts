@@ -128,4 +128,13 @@ export const getFileConversations = async (fileId: string) => {
   return response.data;
 };
 
+// Fetch dynamic questions for a file
+export const getFileQuestions = async (fileId: string): Promise<string[]> => {
+  const response = await api.get(`/files/${fileId}/questions`);
+  if (response.data && response.data.data && Array.isArray(response.data.data.questions)) {
+    return response.data.data.questions;
+  }
+  return [];
+};
+
 export default api; 

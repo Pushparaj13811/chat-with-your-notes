@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, Info, FileWarning } from 'lucide-react';
-import { askQuestion, getChatHistory } from '../services/api';
+import { Send, Bot, Info, FileWarning, Loader2 } from 'lucide-react';
+import { askQuestion, getChatHistory, getFileQuestions } from '../services/api';
 import type { ChatMessage, RawApiChatMessage } from '../types';
 import Accordion from './Accordion';
 import ReactMarkdown from 'react-markdown';
@@ -18,17 +18,42 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openContextId, setOpenContextId] = useState<string | null>(null);
+  const [fileQuestionsMap, setFileQuestionsMap] = useState<Record<string, string[]>>({});
+  const [dynamicQuestions, setDynamicQuestions] = useState<string[]>([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Example questions that users can click on
-  const exampleQuestions = [
-    "What are the main topics covered in this document?",
-    "Can you summarize the key points?",
-    "What are the most important findings or conclusions?",
-    "Are there any recommendations or action items?",
-    "What methodology or approach is used?",
-    "What are the main challenges or limitations mentioned?"
-  ];
+  // Fetch and cache questions for all selected files
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      if (selectedFileIds.length === 0) {
+        setDynamicQuestions([]);
+        return;
+      }
+      setQuestionsLoading(true);
+      try {
+        const newMap: Record<string, string[]> = { ...fileQuestionsMap };
+        for (const fileId of selectedFileIds) {
+          if (!newMap[fileId]) {
+            const questions = await getFileQuestions(fileId);
+            newMap[fileId] = questions;
+          }
+        }
+        setFileQuestionsMap(newMap);
+        // Combine all questions, deduplicate, and randomize
+        const allQuestions = selectedFileIds.flatMap(id => newMap[id] || []);
+        const uniqueQuestions = Array.from(new Set(allQuestions));
+        const shuffled = uniqueQuestions.sort(() => Math.random() - 0.5);
+        setDynamicQuestions(shuffled.slice(0, 6));
+      } catch {
+        setDynamicQuestions([]);
+      } finally {
+        setQuestionsLoading(false);
+      }
+    };
+    fetchQuestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFileIds.join(",")]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -40,20 +65,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
       setError(null);
       try {
         const response = await getChatHistory(chatSessionId);
-        console.log("Raw chat history response:", response.data);
         if (response.success) {
           setMessages(response.data.map((msg: RawApiChatMessage) => {
-            console.log("Raw msg.role from API:", msg.role); // Log 1
             const transformedMsg: ChatMessage = {
               id: msg.id,
               content: msg.content,
               createdAt: msg.createdAt,
               type: msg.role === 'user' ? 'user' : 'assistant',
               timestamp: new Date(msg.createdAt),
-              ...(msg.context && { context: msg.context }), // Conditionally include context
-              ...(msg.isError && { isError: msg.isError }), // Conditionally include isError
+              ...(msg.context && { context: msg.context }),
+              ...(msg.isError && { isError: msg.isError }),
             };
-            console.log("Transformed msg.type:", transformedMsg.type); // Log 2
             return transformedMsg;
           }));
         } else {
@@ -129,7 +151,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
 
   const handleExampleQuestionClick = (question: string) => {
     setInputValue(question);
-    // Automatically submit the question after a short delay
     setTimeout(() => {
       const form = document.querySelector('form');
       if (form) {
@@ -141,8 +162,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
 
   const renderMessage = (msg: ChatMessage) => {
     const isUser = msg.type === 'user';
-    console.log(`Message ID: ${msg.id}, Type: ${msg.type}, isUser: ${isUser}`);
-
     return (
       <div key={msg.id} className={`flex items-start gap-4 justify-center`}>
         <div
@@ -163,7 +182,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
                 {msg.content}
               </ReactMarkdown>
             </div>
-
           )}
           {msg.context && msg.context.length > 0 && (
             <div className="mt-3 pt-3 border-t border-borderLight text-xs text-gray-600">
@@ -219,7 +237,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
             <div className="inline-block bg-gradient-to-br from-primary-50 to-primary-100 rounded-full p-6 shadow-inner shadow-primary-200 mb-6">
               <Bot className="h-16 w-16 text-primary-500 animate-bounce-slow" />
             </div>
-            
             <div className="max-w-2xl mx-auto">
               <h2 className="text-2xl font-bold text-gray-800 mb-3">
                 Welcome to Your Document Assistant! 🤖
@@ -228,27 +245,36 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
                 I've analyzed your selected document and I'm ready to help you explore its contents. 
                 Ask me anything or try one of these example questions to get started!
               </p>
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
-                {exampleQuestions.map((question, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleExampleQuestionClick(question)}
-                    className="p-4 text-left bg-white border border-gray-200 rounded-xl hover:border-primary-300 hover:bg-primary-50 hover:shadow-md transition-all duration-200 group"
-                    disabled={isLoading}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-6 h-6 bg-primary-100 rounded-full flex items-center justify-center mt-0.5">
-                        <span className="text-xs font-semibold text-primary-600">{index + 1}</span>
+                {questionsLoading ? (
+                  <div className="col-span-2 flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 text-primary-500 animate-spin mr-2" />
+                    <span className="text-primary-600 font-medium">Generating questions from your document...</span>
+                  </div>
+                ) : dynamicQuestions.length > 0 ? (
+                  dynamicQuestions.map((question, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleExampleQuestionClick(question)}
+                      className="p-4 text-left bg-white border border-gray-200 rounded-xl hover:border-primary-300 hover:bg-primary-50 hover:shadow-md transition-all duration-200 group"
+                      disabled={isLoading}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-6 h-6 bg-primary-100 rounded-full flex items-center justify-center mt-0.5">
+                          <span className="text-xs font-semibold text-primary-600">{index + 1}</span>
+                        </div>
+                        <p className="text-sm text-gray-700 group-hover:text-primary-700 font-medium leading-relaxed">
+                          {question}
+                        </p>
                       </div>
-                      <p className="text-sm text-gray-700 group-hover:text-primary-700 font-medium leading-relaxed">
-                        {question}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ))
+                ) : (
+                  <div className="col-span-2 text-gray-400 text-center py-8">
+                    No dynamic questions available for this document.
+                  </div>
+                )}
               </div>
-              
               <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl p-4 border border-primary-100">
                 <div className="flex items-center gap-2 mb-2">
                   <Info className="h-4 w-4 text-primary-600" />
@@ -261,7 +287,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
             </div>
           </div>
         )}
-
 
         {messages.map(renderMessage)}
 

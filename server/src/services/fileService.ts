@@ -2,6 +2,7 @@ import { prisma } from '../config/database';
 import { generateEmbedding } from '../config/gemini';
 import { extractTextFromFile, splitTextIntoChunks } from '../utils/textProcessor';
 import fs from 'fs/promises';
+import { textModel } from '../config/gemini';
 
 export interface UploadedFile {
   originalname: string;
@@ -15,25 +16,39 @@ export async function processAndStoreFile(uploadedFile: UploadedFile): Promise<s
   try {
     // Extract text from file
     const text = await extractTextFromFile(uploadedFile.path, uploadedFile.mimetype);
-    
+    // Generate 6 questions from the file content (only at upload time)
+    let questions: string[] = [];
+    if (text && text.trim().length > 100) {
+      const prompt = `You are an expert reader. Analyze the following document and generate 6 thought-provoking, insightful, and contextually relevant questions that a user could ask based on the document's content. The questions should reflect the actual structure, concepts, and ideas presented in the document. Avoid vague or overly broad questions. Output only the 6 questions as a numbered Markdown list.\n\n---\n\nDocument Content:\n${text.substring(0, 8000)}\n\n---`;
+      try {
+        const result = await textModel.generateContent(prompt);
+        const response = await result.response;
+        const questionsText = response.text();
+        questions = questionsText
+          .split(/\n+/)
+          .map(line => line.replace(/^\d+\.|^- /, '').trim())
+          .filter(q => q.length > 0)
+          .slice(0, 6);
+      } catch (err) {
+        questions = [];
+      }
+    }
     // Split text into chunks
     const chunks = await splitTextIntoChunks(text);
-    
-    // Create file record in database
+    // Create file record in database (store questions)
     const file = await prisma.file.create({
       data: {
         filename: uploadedFile.filename,
         originalName: uploadedFile.originalname,
         mimeType: uploadedFile.mimetype,
         size: uploadedFile.size,
-        path: uploadedFile.path
+        path: uploadedFile.path,
+        questions: questions.length > 0 ? questions : undefined,
       }
     });
-    
     // Process chunks and generate embeddings
     const chunkPromises = chunks.map(async (chunk) => {
       const embedding = await generateEmbedding(chunk.content);
-      
       return prisma.chunk.create({
         data: {
           content: chunk.content,
@@ -45,12 +60,9 @@ export async function processAndStoreFile(uploadedFile: UploadedFile): Promise<s
         }
       });
     });
-    
     await Promise.all(chunkPromises);
-    
     console.log(`✅ File processed successfully: ${uploadedFile.originalname} (${chunks.length} chunks)`);
     return file.id;
-    
   } catch (error) {
     console.error('Error processing file:', error);
     throw new Error('Failed to process file');

@@ -24,6 +24,7 @@ model File {
   updatedAt     DateTime  @updatedAt
   chunks        Chunk[]
   chatSessions  ChatSession[] @relation("ChatSessionFiles")
+  questions     Json? // Store generated questions as an array
 
   @@map("files")
 }

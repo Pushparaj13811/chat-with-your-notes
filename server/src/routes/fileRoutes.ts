@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
-import { uploadFile, getFiles, removeFile } from '../controllers/fileController';
+import { uploadFile, getFiles, removeFile, generateFileQuestions } from '../controllers/fileController';
 
 const router = Router();
 
@@ -58,5 +58,6 @@ const upload = multer({
 router.post('/upload', upload.single('file') as any, uploadFile);
 router.get('/files', getFiles);
 router.delete('/files/:fileId', removeFile);
+router.get('/files/:fileId/questions', generateFileQuestions);
 
 export default router; 
