@@ -273,23 +273,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
       {/* Message input */}
       <form
         onSubmit={handleSubmit}
-        className="p-4 border-t border-borderLight bg-gray-50 flex items-center gap-3 shadow-custom-sm"
+        className="relative flex items-center gap-3 p-4 bg-gradient-to-br from-primary-50/60 to-white/80 border border-primary-100 rounded-t-2xl shadow-custom-md max-w-3xl w-full mx-auto"
+        style={{ boxShadow: '0 2px 16px 0 rgba(99,102,241,0.08)' }}
       >
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Ask me anything about your document... (e.g., 'What are the main topics?', 'Summarize the key points')"
-          className="flex-1 py-3 px-4 bg-white rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-transparent transition-all text-sm shadow-sm"
+          placeholder="Type your message here..."
+          className="flex-1 bg-transparent text-lg placeholder:text-primary-300 px-4 py-4 rounded-xl border-none focus:outline-none transition-all shadow-none"
           disabled={isLoading || selectedFileIds.length === 0}
         />
         <button
           type="submit"
-          className="bg-primary-600 text-white p-3 rounded-full shadow-custom-md hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="absolute right-6 top-1/2 -translate-y-1/2 bg-primary-400 hover:bg-primary-500 text-white rounded-xl p-3 shadow-md transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ boxShadow: '0 2px 8px 0 rgba(99,102,241,0.10)' }}
           disabled={isLoading || !inputValue.trim() || selectedFileIds.length === 0}
         >
-          <Send className="h-4 w-4" />
-          <span className="text-sm font-medium">Ask</span>
+          <Send className="h-5 w-5" />
         </button>
       </form>
     </div>
