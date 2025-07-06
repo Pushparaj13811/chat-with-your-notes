@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Info, FileWarning } from 'lucide-react';
+import { Send, Bot, Info, FileWarning } from 'lucide-react';
 import { askQuestion, getChatHistory } from '../services/api';
 import type { ChatMessage, RawApiChatMessage } from '../types';
 import Accordion from './Accordion';
@@ -19,6 +19,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
   const [error, setError] = useState<string | null>(null);
   const [openContextId, setOpenContextId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Example questions that users can click on
+  const exampleQuestions = [
+    "What are the main topics covered in this document?",
+    "Can you summarize the key points?",
+    "What are the most important findings or conclusions?",
+    "Are there any recommendations or action items?",
+    "What methodology or approach is used?",
+    "What are the main challenges or limitations mentioned?"
+  ];
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -117,22 +127,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
     setOpenContextId(prevId => (prevId === id ? null : id));
   };
 
+  const handleExampleQuestionClick = (question: string) => {
+    setInputValue(question);
+    // Automatically submit the question after a short delay
+    setTimeout(() => {
+      const form = document.querySelector('form');
+      if (form) {
+        const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+        form.dispatchEvent(submitEvent);
+      }
+    }, 100);
+  };
+
   const renderMessage = (msg: ChatMessage) => {
     const isUser = msg.type === 'user';
     console.log(`Message ID: ${msg.id}, Type: ${msg.type}, isUser: ${isUser}`); // Log 3
-    const Icon = isUser ? User : Bot;
 
     return (
       <div key={msg.id} className={`flex items-start gap-4 justify-center`}>
-        {/* AI icon on the left for AI messages */}
-        {!isUser && (
-          <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${msg.isError ? 'bg-red-100' : 'bg-primary-50'}`}>
-            <Icon className={`h-6 w-6 ${msg.isError ? 'text-red-600' : 'text-primary-700'}`} />
-          </div>
-        )}
         <div className={`w-full max-w-3xl p-4 rounded-2xl shadow-chat-bubble ${isUser
-            ? 'bg-primary-600 text-white rounded-bl-3xl rounded-tr-3xl rounded-br-md' // User message: right-aligned, pointed bottom-right
-            : `bg-white border border-borderLight text-gray-800 rounded-br-3xl rounded-tl-3xl rounded-bl-md ${msg.isError ? 'border-red-300 bg-red-50 text-red-900' : ''}` // AI message: left-aligned, pointed bottom-left
+          ? 'bg-primary-600 text-white rounded-bl-3xl rounded-tr-3xl rounded-br-md' // User message: right-aligned, pointed bottom-right
+          : `bg-white border border-borderLight text-gray-800 rounded-br-3xl rounded-tl-3xl rounded-bl-md ${msg.isError ? 'border-red-300 bg-red-50 text-red-900' : ''}` // AI message: left-aligned, pointed bottom-left
           }`}>
           {isUser ? (
             <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -170,12 +185,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
             </div>
           )}
         </div>
-        {/* User icon on the right for user messages */}
-        {isUser && (
-          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center">
-            <Icon className="h-6 w-6 text-white" />
-          </div>
-        )}
       </div>
     );
   };
@@ -200,21 +209,58 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
         )}
 
         {messages.length === 0 && !isLoading && (
-          <div className="text-center py-10">
-            <Bot className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400">
-              Ask me anything about the selected document!
-            </p>
+          <div className="text-center py-12 animate-fade-in">
+            <div className="inline-block bg-gradient-to-br from-primary-50 to-primary-100 rounded-full p-6 shadow-inner shadow-primary-200 mb-6">
+              <Bot className="h-16 w-16 text-primary-500 animate-bounce-slow" />
+            </div>
+            
+            <div className="max-w-2xl mx-auto">
+              <h2 className="text-2xl font-bold text-gray-800 mb-3">
+                Welcome to Your Document Assistant! 🤖
+              </h2>
+              <p className="text-gray-600 text-lg mb-8 leading-relaxed">
+                I've analyzed your selected document and I'm ready to help you explore its contents. 
+                Ask me anything or try one of these example questions to get started!
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
+                {exampleQuestions.map((question, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleExampleQuestionClick(question)}
+                    className="p-4 text-left bg-white border border-gray-200 rounded-xl hover:border-primary-300 hover:bg-primary-50 hover:shadow-md transition-all duration-200 group"
+                    disabled={isLoading}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-6 h-6 bg-primary-100 rounded-full flex items-center justify-center mt-0.5">
+                        <span className="text-xs font-semibold text-primary-600">{index + 1}</span>
+                      </div>
+                      <p className="text-sm text-gray-700 group-hover:text-primary-700 font-medium leading-relaxed">
+                        {question}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              
+              <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl p-4 border border-primary-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="h-4 w-4 text-primary-600" />
+                  <span className="text-sm font-semibold text-primary-700">Pro tip:</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  You can ask follow-up questions, request specific sections, or ask me to compare different parts of your document.
+                </p>
+              </div>
+            </div>
           </div>
         )}
+
 
         {messages.map(renderMessage)}
 
         {isLoading && messages.length > 0 && (
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-primary-50">
-              <Bot className="h-6 w-6 text-primary-700" />
-            </div>
+          <div className="flex items-start justify-center gap-4">
             <div className="w-full max-w-3xl p-4 rounded-2xl bg-white border border-borderLight text-gray-800 rounded-br-3xl rounded-tl-3xl rounded-bl-md shadow-chat-bubble">
               <p className="animate-pulse text-gray-400">Thinking...</p>
             </div>
@@ -233,16 +279,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Ask a question about your document..."
-          className="flex-1 py-2 px-4 bg-gray-100 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-transparent transition-all text-sm"
+          placeholder="Ask me anything about your document... (e.g., 'What are the main topics?', 'Summarize the key points')"
+          className="flex-1 py-3 px-4 bg-white rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-transparent transition-all text-sm shadow-sm"
           disabled={isLoading || selectedFileIds.length === 0}
         />
         <button
           type="submit"
-          className="bg-primary-600 text-white p-2.5 rounded-full shadow-custom-md hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-primary-600 text-white p-3 rounded-full shadow-custom-md hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           disabled={isLoading || !inputValue.trim() || selectedFileIds.length === 0}
         >
-          <Send className="h-5 w-5" />
+          <Send className="h-4 w-4" />
+          <span className="text-sm font-medium">Ask</span>
         </button>
       </form>
     </div>

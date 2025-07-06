@@ -61,7 +61,7 @@ const ChatSessionList: React.FC<ChatSessionListProps> = ({ onSelectSession, sele
   };
 
   return (
-    <div className="rounded-xl p-4 h-full flex flex-col">
+    <div className=" rounded-xl p-4 h-full flex flex-col">
       <h2 className="text-base font-semibold text-gray-700 mb-4 flex-shrink-0">Chat Sessions</h2>
       <button
         onClick={onNewChat}
@@ -102,22 +102,20 @@ const ChatSessionList: React.FC<ChatSessionListProps> = ({ onSelectSession, sele
               className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-all duration-200 group 
                 ${selectedSessionId === session.id ? 'bg-primary-50 border border-primary-200 text-primary-800 shadow-custom-sm' : 'bg-white border border-borderLight hover:bg-gray-50 hover:border-gray-200 text-gray-700'}
               `}
-              style={{ minHeight: '56px' }}
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <MessageSquare className="h-5 w-5 flex-shrink-0" />
-                <span className="font-medium truncate min-w-0">{session.title || 'Untitled Session'}</span>
-                {session.files.length > 0 && (
-                  <span className="text-xs text-gray-400 flex-shrink-0 truncate">
-                    ({session.files.map(f => f.originalName).join(', ')})
-                  </span>
-                )}
-              </div>  
+                <span className="font-medium truncate">{session.title || 'Untitled Session'}</span>
+              </div>
+              {session.files.length > 0 && (
+                <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
+                  ({session.files.map(f => f.originalName).join(', ')})
+                </span>
+              )}
               <button
-                onClick={(e) => { e.stopPropagation(); handleDeleteClick(e, session.id); }}
-                className="ml-2 text-gray-400 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors flex-shrink-0"
+                onClick={(e) => handleDeleteClick(e, session.id)}
+                className="ml-auto p-1.5 text-gray-400 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
                 title="Delete session"
-                tabIndex={0}
               >
                 <Trash2 className="h-4 w-4" />
               </button>
