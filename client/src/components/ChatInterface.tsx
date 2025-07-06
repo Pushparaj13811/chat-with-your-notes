@@ -197,7 +197,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
 
   if (selectedFileIds.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center bg-white rounded-xl border border-borderLight shadow-custom-md p-10">
+      <div className="flex flex-col items-center justify-center h-full text-center bg-primary-50 rounded-xl border border-primary-200  shadow-custom-md p-10">
         <FileWarning className="h-14 w-14 text-gray-300 mb-4" />
         <h3 className="text-lg font-semibold text-gray-500">No File Selected</h3>
         <p className="text-gray-400 mt-2">Please select a document from the sidebar to start a conversation.</p>

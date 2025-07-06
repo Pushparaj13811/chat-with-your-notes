@@ -7,6 +7,7 @@ import type { File as FileType } from '../types';
 
 interface FileUploadProps {
   onFileUploaded: (file: FileType) => void;
+  insideModal?: boolean;
 }
 
 interface UploadState {
@@ -16,7 +17,7 @@ interface UploadState {
   success: boolean;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
+const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, insideModal = false }) => {
   const [uploadState, setUploadState] = useState<UploadState>({
     isUploading: false,
     progress: 0,
@@ -100,7 +101,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
   const clearError = () => setUploadState(prev => ({ ...prev, error: null }));
 
   return (
-    <div className="rounded-2xl border border-borderLight p-6 shadow-xl bg-white/80 backdrop-blur-md transition-all duration-300 hover:shadow-2xl">
+    <div className={insideModal
+      ? ''
+      : 'rounded-2xl border border-borderLight p-6 shadow-xl  backdrop-blur-md transition-all duration-300 hover:shadow-2xl'}>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
           <FileText className="h-6 w-6 text-primary-600" />
@@ -128,7 +131,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
         className={`
           relative border-2 border-dashed rounded-xl p-10 text-center cursor-pointer
           transition-all duration-300 ease-in-out group bg-gradient-to-br
-          ${isDragOver ? 'from-primary-50 to-white border-primary-200 scale-[1.02]' : 'from-white to-white hover:border-primary-200'}
+          ${isDragOver ? 'from-primary-50 to-primary-100 border-primary-200 scale-[1.02]' : 'from-primary-50 to-primary-100 hover:border-primary-200'}
           ${uploadState.isUploading ? 'opacity-60' : 'opacity-100'}
         `}
         onDragOver={handleDragOver}

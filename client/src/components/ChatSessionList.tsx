@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getAllChatSessions, deleteChatSession } from '../services/api';
 import type { ChatSession } from '../types';
-import { MessageSquare, PlusCircle, Trash2, Inbox } from 'lucide-react';
+import { PlusCircle, Trash2, Inbox } from 'lucide-react';
 
 interface ChatSessionListProps {
   onSelectSession: (sessionId: string | null, fileIds: string[]) => void;
@@ -99,19 +99,13 @@ const ChatSessionList: React.FC<ChatSessionListProps> = ({ onSelectSession, sele
             <div
               key={session.id}
               onClick={() => handleSessionClick(session)}
-              className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-all duration-200 group 
-                ${selectedSessionId === session.id ? 'bg-primary-50 border border-primary-200 text-primary-800 shadow-custom-sm' : 'bg-white border border-borderLight hover:bg-gray-50 hover:border-gray-200 text-gray-700'}
+              className={`flex items-center px-2 rounded-lg cursor-pointer transition-all duration-200 group 
+                ${selectedSessionId === session.id ? 'bg-primary-50 text-primary-800 shadow-custom-sm' : 'bg-white hover:bg-gray-50 hover:border-gray-200 text-gray-700'}
               `}
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <MessageSquare className="h-5 w-5 flex-shrink-0" />
                 <span className="font-medium truncate">{session.title || 'Untitled Session'}</span>
               </div>
-              {session.files.length > 0 && (
-                <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
-                  ({session.files.map(f => f.originalName).join(', ')})
-                </span>
-              )}
               <button
                 onClick={(e) => handleDeleteClick(e, session.id)}
                 className="ml-auto p-1.5 text-gray-400 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"

@@ -51,7 +51,7 @@ function App() {
   }, [selectedChatSessionId, setSelectedFileIds, setSelectedFileIdsForSession, setCurrentView]);
 
   return (
-    <div className="flex h-screen bg-white font-sans text-gray-800">
+    <div className="flex h-screen bg-gradient-to-br from-primary-100 to-primary-200 border-primary-200 text-primary-900 font-sans">
       {/* Sidebar */}
       <aside className="w-64 flex flex-col shadow-sidebar overflow-hidden">
         <div className="px-6 pt-8">
@@ -104,7 +104,7 @@ function App() {
       </aside>
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col mt-4 bg-backgroundLight">
+      <main className="flex-1 flex flex-col mt-4">
           <ChatInterface 
             selectedFileIds={selectedFileIdsForSession.length > 0 ? selectedFileIdsForSession : selectedFileIds} 
             chatSessionId={selectedChatSessionId} 
