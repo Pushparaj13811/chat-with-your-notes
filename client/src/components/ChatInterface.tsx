@@ -141,14 +141,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
 
   const renderMessage = (msg: ChatMessage) => {
     const isUser = msg.type === 'user';
-    console.log(`Message ID: ${msg.id}, Type: ${msg.type}, isUser: ${isUser}`); // Log 3
+    console.log(`Message ID: ${msg.id}, Type: ${msg.type}, isUser: ${isUser}`);
 
     return (
       <div key={msg.id} className={`flex items-start gap-4 justify-center`}>
-        <div className={`w-full max-w-3xl p-4 rounded-2xl shadow-chat-bubble ${isUser
-          ? 'bg-primary-600 text-white rounded-bl-3xl rounded-tr-3xl rounded-br-md' // User message: right-aligned, pointed bottom-right
-          : `bg-white border border-borderLight text-gray-800 rounded-br-3xl rounded-tl-3xl rounded-bl-md ${msg.isError ? 'border-red-300 bg-red-50 text-red-900' : ''}` // AI message: left-aligned, pointed bottom-left
-          }`}>
+        <div
+          className={`w-full max-w-3xl p-4 rounded-2xl shadow-custom-md border ${
+            isUser
+              ? 'bg-gradient-to-br from-primary-100 to-primary-200 border-primary-200 text-primary-900'
+              : msg.isError
+                ? 'border-red-300 bg-red-50 text-red-900'
+                : 'bg-gradient-to-br from-primary-50/60 to-white/80 border-primary-100 text-gray-800'
+          }`}
+          style={{ boxShadow: '0 2px 16px 0 rgba(99,102,241,0.08)' }}
+        >
           {isUser ? (
             <p className="whitespace-pre-wrap">{msg.content}</p>
           ) : (
@@ -261,7 +267,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFileIds, chatSess
 
         {isLoading && messages.length > 0 && (
           <div className="flex items-start justify-center gap-4">
-            <div className="w-full max-w-3xl p-4 rounded-2xl bg-white border border-borderLight text-gray-800 rounded-br-3xl rounded-tl-3xl rounded-bl-md shadow-chat-bubble">
+            <div className="w-full max-w-3xl p-4 rounded-2xl shadow-custom-md border bg-gradient-to-br from-primary-50/60 to-white/80 border-primary-100 text-gray-800">
               <p className="animate-pulse text-gray-400">Thinking...</p>
             </div>
           </div>
