@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
+import cookieParser from 'cookie-parser';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import fileRoutes from './routes/fileRoutes';
 import chatRoutes from './routes/chatRoutes';
@@ -26,6 +27,7 @@ app.use(cors({
     credentials: true
 }));
 
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

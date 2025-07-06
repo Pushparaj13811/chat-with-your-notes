@@ -252,4 +252,84 @@ chat-with-your-notes/
 
 ## License
 
-MIT License - see LICENSE file for details 
+MIT License - see LICENSE file for details
+
+## Docker Deployment
+
+### Prerequisites
+- Docker and Docker Compose installed
+- Google Gemini API key
+
+### Quick Start with Docker
+
+1. **Set Environment Variables**
+   ```bash
+   export GEMINI_API_KEY="your_gemini_api_key_here"
+   ```
+
+2. **Build and Run**
+   ```bash
+   # Build and start all services
+   docker-compose up --build
+   
+   # Or run in detached mode
+   docker-compose up -d --build
+   ```
+
+3. **Access the Application**
+   - Frontend: http://localhost
+   - Backend API: http://localhost:3001
+   - Database: localhost:5432
+
+### Development with Docker
+
+For development, you can run only the database and Redis services:
+
+```bash
+# Start only database and Redis
+docker-compose -f docker-compose.dev.yml up -d
+
+# Run your local development servers
+cd server && bun run dev
+cd client && npm run dev
+```
+
+### Docker Commands
+
+```bash
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (WARNING: This will delete all data)
+docker-compose down -v
+
+# Rebuild specific service
+docker-compose build server
+
+# Access database
+docker-compose exec postgres psql -U postgres -d chat_with_notes
+
+# View running containers
+docker-compose ps
+```
+
+### Production Deployment
+
+For production deployment, consider:
+
+1. **Environment Variables**: Use a `.env` file or environment management system
+2. **SSL/TLS**: Add reverse proxy (nginx/traefik) with SSL certificates
+3. **Database**: Use managed PostgreSQL service or configure backups
+4. **Monitoring**: Add health checks and monitoring tools
+5. **Scaling**: Use Docker Swarm or Kubernetes for scaling
+
+### Docker Configuration Details
+
+- **Multi-stage builds** for optimized image sizes
+- **Health checks** for all services
+- **Volume persistence** for database and uploads
+- **Network isolation** between services
+- **Nginx reverse proxy** for the frontend with caching and security headers 

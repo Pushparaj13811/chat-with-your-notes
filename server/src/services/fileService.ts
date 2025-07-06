@@ -10,6 +10,7 @@ export interface UploadedFile {
   mimetype: string;
   size: number;
   path: string;
+  deviceId: string;
 }
 
 export async function processAndStoreFile(uploadedFile: UploadedFile): Promise<string> {
@@ -40,7 +41,7 @@ export async function processAndStoreFile(uploadedFile: UploadedFile): Promise<s
     }
     // Split text into chunks
     const chunks = await splitTextIntoChunks(text);
-    // Create file record in database (store questions)
+    // Create file record in database (store questions and device ID)
     const file = await prisma.file.create({
       data: {
         filename: uploadedFile.filename,
@@ -48,6 +49,7 @@ export async function processAndStoreFile(uploadedFile: UploadedFile): Promise<s
         mimeType: uploadedFile.mimetype,
         size: uploadedFile.size,
         path: uploadedFile.path,
+        deviceId: uploadedFile.deviceId,
         questions: questions.length > 0 ? questions : undefined,
       }
     });
@@ -74,13 +76,35 @@ export async function processAndStoreFile(uploadedFile: UploadedFile): Promise<s
   }
 }
 
-export async function findSimilarChunks(query: string, limit: number = 5): Promise<any[]> {
+export async function findSimilarChunks(query: string, limit: number = 5, fileIds: string[] = [], deviceId?: string): Promise<any[]> {
   try {
     // Generate embedding for the query
     const queryEmbedding = await generateEmbedding(query);
 
-    // Get all chunks with their embeddings
+    // Build where clause for chunks
+    const whereClause: any = {
+      fileId: {
+        in: fileIds,
+      },
+    };
+
+    // If device ID is provided, ensure files belong to the device
+    if (deviceId && fileIds.length > 0) {
+      const deviceFiles = await prisma.file.findMany({
+        where: {
+          id: { in: fileIds },
+          deviceId: deviceId
+        },
+        select: { id: true }
+      });
+      
+      const deviceFileIds = deviceFiles.map(f => f.id);
+      whereClause.fileId.in = deviceFileIds;
+    }
+
+    // Get chunks with their embeddings
     const chunks = await prisma.chunk.findMany({
+      where: whereClause,
       include: {
         file: true
       }
@@ -128,9 +152,12 @@ function calculateCosineSimilarity(vecA: number[], vecB: number[]): number {
   return dotProduct / (normA * normB);
 }
 
-export async function getAllFiles(): Promise<any[]> {
+export async function getAllFiles(deviceId: string): Promise<any[]> {
   try {
     return await prisma.file.findMany({
+      where: {
+        deviceId: deviceId
+      },
       include: {
         _count: {
           select: {
@@ -149,14 +176,17 @@ export async function getAllFiles(): Promise<any[]> {
   }
 }
 
-export async function deleteFile(fileId: string): Promise<void> {
+export async function deleteFile(fileId: string, deviceId: string): Promise<void> {
   try {
-    const file = await prisma.file.findUnique({
-      where: { id: fileId }
+    const file = await prisma.file.findFirst({
+      where: { 
+        id: fileId,
+        deviceId: deviceId
+      }
     });
 
     if (!file) {
-      throw new Error('File not found');
+      throw new Error('File not found or access denied');
     }
 
     // Delete file from filesystem

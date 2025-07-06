@@ -67,7 +67,8 @@ export async function splitTextIntoChunks(text: string): Promise<TextChunk[]> {
 export async function findSimilarChunks(
   question: string,
   topK: number,
-  fileIds: string[]
+  fileIds: string[],
+  deviceId: string
 ): Promise<any[]> {
   const questionEmbedding = await generateEmbedding(question);
 

@@ -12,6 +12,7 @@ export interface ChatRequest {
   question: string;
   fileIds: string[];
   chatSessionId?: string;
+  deviceId: string;
 }
 
 export interface ChatResponse {
@@ -35,15 +36,18 @@ export interface ConversationMemory {
 }
 
 export async function processQuestion(request: ChatRequest): Promise<ChatResponse> {
-  const { question, fileIds, chatSessionId: existingSessionId } = request;
+  const { question, fileIds, chatSessionId: existingSessionId, deviceId } = request;
 
   let session;
   let chatSessionId = existingSessionId;
 
   // 1. Find or create the chat session
   if (chatSessionId) {
-    session = await prisma.chatSession.findUnique({ 
-      where: { id: chatSessionId },
+    session = await prisma.chatSession.findFirst({ 
+      where: { 
+        id: chatSessionId,
+        deviceId: deviceId
+      },
       include: { messages: true }
     });
   }
@@ -53,6 +57,7 @@ export async function processQuestion(request: ChatRequest): Promise<ChatRespons
     const newSession = await prisma.chatSession.create({
       data: {
         title: sessionTitle,
+        deviceId: deviceId,
         files: {
           connect: fileIds.map(id => ({ id })),
         },
@@ -86,7 +91,7 @@ export async function processQuestion(request: ChatRequest): Promise<ChatRespons
   });
 
   // 4. Find Relevant Context
-  const relevantChunks = await findSimilarChunks(question, 5, fileIds);
+  const relevantChunks = await findSimilarChunks(question, 5, fileIds, deviceId);
   const context = relevantChunks.map((chunk: Chunk) => chunk.content).join('\n\n');
 
   // 5. Generate AI Response with Memory
@@ -147,74 +152,61 @@ export async function processQuestion(request: ChatRequest): Promise<ChatRespons
   };
 }
 
-export async function getConversationMemory(chatSessionId: string): Promise<ConversationMemory> {
-  const optimizedContext = await memoryManager.getOptimizedContext(chatSessionId);
-  
-  const session = await prisma.chatSession.findUnique({
-    where: { id: chatSessionId },
-    select: { messageCount: true, isSummarized: true }
-  });
-
-  return {
-    history: optimizedContext.history,
-    summary: optimizedContext.summary,
-    messageCount: session?.messageCount || 0,
-    isSummarized: session?.isSummarized || false
-  };
-}
-
-export async function getChatHistory(chatSessionId: string) {
-  const session = await prisma.chatSession.findUnique({
-    where: { id: chatSessionId },
-    include: { messages: true }
+export async function getConversationMemory(chatSessionId: string, deviceId: string): Promise<ConversationMemory> {
+  // Verify device ownership
+  const session = await prisma.chatSession.findFirst({
+    where: { 
+      id: chatSessionId,
+      deviceId: deviceId
+    }
   });
 
   if (!session) {
-    return [];
+    throw new Error('Chat session not found or access denied');
   }
 
-  // Get all messages, including summarized ones
+  const optimizedContext = await memoryManager.getOptimizedContext(chatSessionId);
+  
+  return {
+    history: optimizedContext.history,
+    summary: optimizedContext.summary,
+    messageCount: session.messageCount,
+    isSummarized: session.isSummarized
+  };
+}
+
+export async function getChatHistory(chatSessionId: string, deviceId: string) {
+  // Verify device ownership
+  const session = await prisma.chatSession.findFirst({
+    where: { 
+      id: chatSessionId,
+      deviceId: deviceId
+    }
+  });
+
+  if (!session) {
+    throw new Error('Chat session not found or access denied');
+  }
+
   const messages = await prisma.chatMessage.findMany({
     where: { chatSessionId },
     orderBy: { createdAt: 'asc' },
   });
 
-  // Map messages to ensure context is always string[]
-  const mappedMessages = messages.map(msg => {
-    let transformedContext: string[] = [];
-    if (msg.context) {
-      const contextData = msg.context as any;
-      if (contextData.chunks && Array.isArray(contextData.chunks)) {
-        transformedContext = contextData.chunks.map((c: any) => c.content);
-      } else if (Array.isArray(contextData)) {
-        transformedContext = contextData.map((c: any) => String(c));
-      }
-    }
-
-    return {
-      ...msg,
-      context: transformedContext,
-    };
-  });
-
-  // If conversation is summarized, add summary at the beginning
-  if (session.conversationSummary) {
-    mappedMessages.unshift({
-      id: 'summary',
-      role: 'system',
-      content: `📝 **Conversation Summary**: ${session.conversationSummary}`,
-      createdAt: session.lastSummarizedAt || session.createdAt,
-      chatSessionId,
-      context: [],
-      isSummarized: true
-    } as any);
-  }
-
-  return mappedMessages;
+  return messages.map((message) => ({
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    createdAt: message.createdAt.toISOString(),
+    context: message.context,
+  }));
 }
 
-export async function getAllChatSessions() {
+export async function getAllChatSessions(deviceId: string) {
   const sessions = await prisma.chatSession.findMany({
+    where: {
+      deviceId: deviceId
+    },
     orderBy: { createdAt: 'desc' },
     select: {
       id: true,
@@ -247,7 +239,19 @@ export async function getAllChatSessions() {
   return sessionsWithStats;
 }
 
-export async function deleteChatSession(chatSessionId: string) {
+export async function deleteChatSession(chatSessionId: string, deviceId: string) {
+  // Verify device ownership
+  const session = await prisma.chatSession.findFirst({
+    where: { 
+      id: chatSessionId,
+      deviceId: deviceId
+    }
+  });
+
+  if (!session) {
+    throw new Error('Chat session not found or access denied');
+  }
+
   // Delete associated chat messages first due to foreign key constraints
   await prisma.chatMessage.deleteMany({
     where: { chatSessionId: chatSessionId },
@@ -259,7 +263,19 @@ export async function deleteChatSession(chatSessionId: string) {
   });
 }
 
-export async function summarizeConversation(chatSessionId: string): Promise<string> {
+export async function summarizeConversation(chatSessionId: string, deviceId: string): Promise<string> {
+  // Verify device ownership
+  const session = await prisma.chatSession.findFirst({
+    where: { 
+      id: chatSessionId,
+      deviceId: deviceId
+    }
+  });
+
+  if (!session) {
+    throw new Error('Chat session not found or access denied');
+  }
+
   const optimizationResult = await memoryManager.optimizeMemory(chatSessionId);
   
   if (!optimizationResult.optimized) {
@@ -269,7 +285,19 @@ export async function summarizeConversation(chatSessionId: string): Promise<stri
   return optimizationResult.summary || '';
 }
 
-export async function clearConversationMemory(chatSessionId: string) {
+export async function clearConversationMemory(chatSessionId: string, deviceId: string) {
+  // Verify device ownership
+  const session = await prisma.chatSession.findFirst({
+    where: { 
+      id: chatSessionId,
+      deviceId: deviceId
+    }
+  });
+
+  if (!session) {
+    throw new Error('Chat session not found or access denied');
+  }
+
   await prisma.chatSession.update({
     where: { id: chatSessionId },
     data: {
@@ -286,7 +314,19 @@ export async function clearConversationMemory(chatSessionId: string) {
   });
 }
 
-export async function getMemoryStats(chatSessionId: string) {
+export async function getMemoryStats(chatSessionId: string, deviceId: string) {
+  // Verify device ownership
+  const session = await prisma.chatSession.findFirst({
+    where: { 
+      id: chatSessionId,
+      deviceId: deviceId
+    }
+  });
+
+  if (!session) {
+    throw new Error('Chat session not found or access denied');
+  }
+
   return await memoryManager.getMemoryStats(chatSessionId);
 }
 

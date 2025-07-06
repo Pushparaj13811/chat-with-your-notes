@@ -8,18 +8,19 @@ import {
   clearMemory,
   getSessionMemoryStats
 } from '../controllers/chatController';
+import { requireDeviceId, requireDeviceOwnership } from '../middleware/deviceAuth';
 
 const router = Router();
 
-// Routes
-router.post('/ask', askQuestion);
-router.get('/history/:chatSessionId', getHistory);
-router.get('/sessions', getAllSessions);
-router.delete('/sessions/:chatSessionId', deleteSession);
+// Routes with device authentication
+router.post('/ask', requireDeviceId, askQuestion);
+router.get('/history/:chatSessionId', requireDeviceId, requireDeviceOwnership('session'), getHistory);
+router.get('/sessions', requireDeviceId, getAllSessions);
+router.delete('/sessions/:chatSessionId', requireDeviceId, requireDeviceOwnership('session'), deleteSession);
 
 // Memory management routes
-router.post('/sessions/:chatSessionId/summarize', summarizeSession);
-router.delete('/sessions/:chatSessionId/memory', clearMemory);
-router.get('/sessions/:chatSessionId/memory-stats', getSessionMemoryStats);
+router.post('/sessions/:chatSessionId/summarize', requireDeviceId, requireDeviceOwnership('session'), summarizeSession);
+router.delete('/sessions/:chatSessionId/memory', requireDeviceId, requireDeviceOwnership('session'), clearMemory);
+router.get('/sessions/:chatSessionId/memory-stats', requireDeviceId, requireDeviceOwnership('session'), getSessionMemoryStats);
 
 export default router; 

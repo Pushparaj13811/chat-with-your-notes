@@ -12,12 +12,18 @@ export const uploadFile = asyncHandler(async (req: Request, res: Response) => {
       throw new ApiError(400, 'No file uploaded');
     }
 
+    const deviceId = (req as any).deviceId;
+    if (!deviceId) {
+      throw new ApiError(401, 'Device not authenticated');
+    }
+
     const uploadedFile: UploadedFile = {
       originalname: req.file.originalname,
       filename: req.file.filename,
       mimetype: req.file.mimetype,
       size: req.file.size,
-      path: req.file.path
+      path: req.file.path,
+      deviceId: deviceId
     };
 
     const fileId = await processAndStoreFile(uploadedFile);
@@ -41,7 +47,12 @@ export const uploadFile = asyncHandler(async (req: Request, res: Response) => {
 
 export const getFiles = asyncHandler(async (req: Request, res: Response) => {
   try {
-    const files = await getAllFiles();
+    const deviceId = (req as any).deviceId;
+    if (!deviceId) {
+      throw new ApiError(401, 'Device not authenticated');
+    }
+
+    const files = await getAllFiles(deviceId);
     return res.status(200).json(new ApiResponse(200, 'Files fetched successfully', files));
   } catch (error) {
     throw new ApiError(500, 'Failed to fetch files');
@@ -51,12 +62,17 @@ export const getFiles = asyncHandler(async (req: Request, res: Response) => {
 export const removeFile = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { fileId } = req.params;
+    const deviceId = (req as any).deviceId;
 
     if (!fileId) {
       throw new ApiError(400, 'File ID is required');
     }
 
-    await deleteFile(fileId);
+    if (!deviceId) {
+      throw new ApiError(401, 'Device not authenticated');
+    }
+
+    await deleteFile(fileId, deviceId);
 
     return res
       .status(200)
@@ -72,14 +88,23 @@ export const removeFile = asyncHandler(async (req: Request, res: Response) => {
   }
 });
 
-// New: Return stored questions for a file
+// Return stored questions for a file
 export const generateFileQuestions = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { fileId } = req.params;
-    if (!fileId) throw new ApiError(400, 'File ID is required');
+    const deviceId = (req as any).deviceId;
 
-    const file = await prisma.file.findUnique({ where: { id: fileId } });
-    if (!file) throw new ApiError(404, 'File not found');
+    if (!fileId) throw new ApiError(400, 'File ID is required');
+    if (!deviceId) throw new ApiError(401, 'Device not authenticated');
+
+    const file = await prisma.file.findFirst({ 
+      where: { 
+        id: fileId,
+        deviceId: deviceId
+      } 
+    });
+    
+    if (!file) throw new ApiError(404, 'File not found or access denied');
 
     const questions = Array.isArray(file.questions) ? file.questions : [];
     return res.status(200).json(new ApiResponse(200, 'Questions fetched', { questions }));

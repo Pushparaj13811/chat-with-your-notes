@@ -1,39 +1,52 @@
 import axios from 'axios';
-import type { ApiResponse, ChatSession, RawApiChatMessage } from '../types'; // Import new types
+import { getOrCreateDeviceId } from '../utils/deviceManager';
+import type { ChatSession } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
+// Create axios instance with default config
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_URL,
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  withCredentials: true, // Important for cookies
 });
 
-// Request interceptor
-api.interceptors.request.use(
-  (config) => {
-    console.log(`🚀 ${config.method?.toUpperCase()} ${config.url}`);
-    return config;
-  },
+// Request interceptor to add device ID header
+api.interceptors.request.use((config) => {
+  const deviceId = getOrCreateDeviceId();
+  if (deviceId) {
+    config.headers['X-Device-ID'] = deviceId;
+  }
+  return config;
+});
+
+// Response interceptor to handle device authentication errors
+api.interceptors.response.use(
+  (response) => response,
   (error) => {
-    console.error('Request error:', error);
+    if (error.response?.status === 401 && error.response?.data?.message?.includes('Device not authenticated')) {
+      // Clear device ID and regenerate
+      localStorage.removeItem('chat_notes_device_id');
+      const newDeviceId = getOrCreateDeviceId();
+      
+      // Retry the request with new device ID
+      if (error.config) {
+        error.config.headers['X-Device-ID'] = newDeviceId;
+        return api.request(error.config);
+      }
+    }
     return Promise.reject(error);
   }
 );
 
-// Response interceptor
-api.interceptors.response.use(
-  (response) => {
-    console.log(`✅ ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`);
-    return response;
-  },
-  (error) => {
-    console.error('Response error:', error.response?.data || error.message);
-    return Promise.reject(error);
-  }
-);
+// Generic API response type
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  message: string;
+  data: T;
+  errors?: string[];
+  stack?: string;
+}
 
 // File upload
 export const uploadFile = async (file: File) => {
@@ -81,8 +94,13 @@ export const getFiles = async () => {
 
 // Delete file
 export const deleteFile = async (fileId: string) => {
-  const response = await api.delete(`/files/${fileId}`);
-  return response.data;
+  try {
+    const response = await api.delete(`/files/${fileId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    throw error;
+  }
 };
 
 // Ask question
@@ -100,11 +118,17 @@ export const askQuestion = async (
 };
 
 // Get chat history
-export const getChatHistory = async (chatSessionId: string): Promise<ApiResponse<RawApiChatMessage[]>> => {
-  const response = await api.get(`/history/${chatSessionId}`);
-  return response.data;
+export const getChatHistory = async (chatSessionId: string) => {
+  try {
+    const response = await api.get(`/history/${chatSessionId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching chat history:', error);
+    throw error;
+  }
 };
 
+// Get all chat sessions
 export const getAllChatSessions = async (): Promise<ApiResponse<ChatSession[]>> => {
   const response = await api.get('/sessions');
   return response.data;
@@ -115,19 +139,6 @@ export const deleteChatSession = async (chatSessionId: string): Promise<ApiRespo
   return response.data;
 };
 
-// Get conversation history
-export const getConversationHistory = async (limit?: number) => {
-  const params = limit ? { limit } : {};
-  const response = await api.get('/history', { params });
-  return response.data;
-};
-
-// Get conversations by file
-export const getFileConversations = async (fileId: string) => {
-  const response = await api.get(`/conversations/${fileId}`);
-  return response.data;
-};
-
 // Fetch dynamic questions for a file
 export const getFileQuestions = async (fileId: string): Promise<string[]> => {
   const response = await api.get(`/files/${fileId}/questions`);
@@ -135,6 +146,22 @@ export const getFileQuestions = async (fileId: string): Promise<string[]> => {
     return response.data.data.questions;
   }
   return [];
+};
+
+// Memory management functions
+export const summarizeSession = async (chatSessionId: string): Promise<ApiResponse<{ summary: string }>> => {
+  const response = await api.post(`/sessions/${chatSessionId}/summarize`);
+  return response.data;
+};
+
+export const clearSessionMemory = async (chatSessionId: string): Promise<ApiResponse<null>> => {
+  const response = await api.delete(`/sessions/${chatSessionId}/memory`);
+  return response.data;
+};
+
+export const getSessionMemoryStats = async (chatSessionId: string): Promise<ApiResponse<unknown>> => {
+  const response = await api.get(`/sessions/${chatSessionId}/memory-stats`);
+  return response.data;
 };
 
 export default api; 
