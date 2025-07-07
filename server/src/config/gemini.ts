@@ -57,7 +57,7 @@ ${recentHistory.map(msg => `${msg.role === 'user' ? '👤 User' : '🤖 Assistan
     - ✅ Encourage understanding, and if applicable, relate concepts to foundational ideas.
     - ✅ Base everything strictly on the provided context (no assumptions)
     - ❌ Never fabricate or guess facts that aren’t supported by the context
-    - ✅ If helpful, break down your answer into steps, bullet points, or examples
+    - ✅ Break down your answer into steps, bullet points, or examples
     - ✅ Format your answer using **Markdown** for readability
     - ✅ If it’s a follow-up question, refer back to earlier context naturally
     - ✅ Avoid overly technical jargon unless necessary—explain it if you use it
@@ -78,10 +78,10 @@ ${recentHistory.map(msg => `${msg.role === 'user' ? '👤 User' : '🤖 Assistan
     ${prompt}
     
     ---
+    🎓 Please provide a well-structured, explanatory answer as if you are guiding a student. Clarify key concepts and their significance. Use examples when helpful. Aim to deepen the student's understanding with your response.
     
     ### 👨‍🏫 Professor's Answer:
     `;
-
 
 
     const result = await textModel.generateContent(fullPrompt);
