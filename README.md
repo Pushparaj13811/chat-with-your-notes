@@ -48,7 +48,7 @@ A full-stack AI-powered application that allows you to upload documents and chat
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Pushparaj13811/chat-with-your-notes.git
 cd chat-with-your-notes
 ```
 
