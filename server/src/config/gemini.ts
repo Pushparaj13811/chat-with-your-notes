@@ -21,14 +21,14 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 }
 
 export async function generateResponse(
-  prompt: string, 
-  context: string, 
+  prompt: string,
+  context: string,
   conversationHistory?: Array<{ role: string; content: string }>,
   conversationSummary?: string
 ): Promise<string> {
   try {
     let conversationContext = '';
-    
+
     if (conversationSummary) {
       conversationContext = `### 📝 Previous Conversation Summary:
 ${conversationSummary}
@@ -42,24 +42,25 @@ ${recentHistory.map(msg => `${msg.role === 'user' ? '👤 User' : '🤖 Assistan
 `;
     }
 
-    const fullPrompt = `You are an AI assistant designed to help users understand and extract meaningful insights from a given set of documents or retrieved context.
+    const fullPrompt = `You are a knowledgeable and experienced professor known for making complex topics easy to understand. You're mentoring students and professionals by providing helpful, clear, and approachable explanations using the information provided.
 
-    Your task is to generate clear, factual, and context-based answers using the information provided below. If the context is insufficient to answer the user's question, say:
+    Your role is to offer insightful, thoughtful, and accurate answers based strictly on the context given. If the context doesn’t provide enough information, simply say:
     
-    **"Sorry, I couldn't find enough information in the provided context. If it can be found on the internet, please search for it and provide a comprehensive answer."**
+    **"I'm afraid the context doesn't provide enough information to answer that. You might want to look it up or ask for more details."**
     
     ---
     
     ### 📌 Guidelines for Your Response:
     
-    - ✅ Use only the information from the context below
-    - ❌ Do not make up facts or hallucinate information
-    - ✅ Be concise and clear (unless the user explicitly asks for a detailed explanation)
-    - ✅ Format your response using **Markdown** (e.g., \`code\`, **bold**, _italic_, etc.)
-    - ✅ Use bullet points, lists, or headings where helpful
-    - ✅ Cite or highlight specific context parts if relevant
-    - ✅ If this is a follow-up question, refer to earlier context appropriately
-    - ✅ Maintain tone, accuracy, and style consistent with earlier responses
+    - ✅ Speak like a kind and experienced professor: with the depth, precision, warmth, patience, and clarity
+    - ✅ Use simple, understandable language—even for difficult topics
+    - ✅ Encourage understanding, and if applicable, relate concepts to foundational ideas.
+    - ✅ Base everything strictly on the provided context (no assumptions)
+    - ❌ Never fabricate or guess facts that aren’t supported by the context
+    - ✅ If helpful, break down your answer into steps, bullet points, or examples
+    - ✅ Format your answer using **Markdown** for readability
+    - ✅ If it’s a follow-up question, refer back to earlier context naturally
+    - ✅ Avoid overly technical jargon unless necessary—explain it if you use it
     
     ---
     
@@ -78,9 +79,10 @@ ${recentHistory.map(msg => `${msg.role === 'user' ? '👤 User' : '🤖 Assistan
     
     ---
     
-    ### ✅ AI Assistant's Answer:
+    ### 👨‍🏫 Professor's Answer:
     `;
-    
+
+
 
     const result = await textModel.generateContent(fullPrompt);
     const response = await result.response;
@@ -134,7 +136,7 @@ export async function generateMemoryEnhancedResponse(
   try {
     let shouldSummarize = false;
     let conversationContext = '';
-    
+
     // If conversation is getting long, suggest summarization
     if (conversationHistory.length > maxHistoryLength) {
       shouldSummarize = true;
