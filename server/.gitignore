@@ -176,3 +176,6 @@ dist
 .DS_Store
 
 uploads/
+
+bun.lock
+package-lock.json
