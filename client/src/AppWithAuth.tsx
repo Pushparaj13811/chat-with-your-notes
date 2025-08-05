@@ -7,13 +7,14 @@ import UploadModal from './components/UploadModal';
 import ChatSessionList from './components/ChatSessionList';
 import UserProfile from './components/UserProfile';
 import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
 import ProfilePage from './pages/ProfilePage';
 import OAuthCallback from './components/auth/OAuthCallback';
 import { UploadCloud, Files, History } from 'lucide-react';
 
 // Protected App Component (inside AuthProvider)
 const ProtectedApp: React.FC = () => {
-  const { isLoading } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [selectedChatSessionId, setSelectedChatSessionId] = useState<string | null>(null);
@@ -69,6 +70,10 @@ const ProtectedApp: React.FC = () => {
     );
   }
 
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/auth/login" replace />;
+}
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-primary-100 to-primary-200 border-primary-200 text-primary-900 font-sans opacity-0 animate-[fadeIn_0.8s_ease-out_forwards]">
@@ -157,6 +162,7 @@ const AppWithAuth: React.FC = () => {
         <Routes>
           {/* Authentication routes */}
           <Route path="/auth/login" element={<LoginPage />} />
+          <Route path="/auth/signup" element={<SignupPage />} />
           <Route path="/auth/success" element={<OAuthCallback />} />
           <Route path="/auth/error" element={<OAuthCallback />} />
           
