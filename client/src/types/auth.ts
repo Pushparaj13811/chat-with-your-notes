@@ -38,7 +38,7 @@ export interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   signup: (credentials: SignupCredentials) => Promise<void>;
   logout: () => void;
-  loginWithGoogle: () => void;
+  loginWithGoogle: () => Promise<void>;
   migrateDeviceData: () => Promise<void>;
   
   // Token management  

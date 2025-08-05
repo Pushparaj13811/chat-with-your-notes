@@ -176,10 +176,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const loginWithGoogle = (): void => {
-    const deviceId = getOrCreateDeviceId();
-    const googleAuthUrl = googleAuth.getGoogleAuthUrl(deviceId);
-    window.location.href = googleAuthUrl;
+  const loginWithGoogle = async (): Promise<void> => {
+    try {
+      const deviceId = getOrCreateDeviceId();
+      const googleAuthUrl = await googleAuth.getGoogleAuthUrl(deviceId);
+      window.location.href = googleAuthUrl;
+    } catch (error) {
+      console.error('Failed to initiate Google OAuth:', error);
+      // Could show a toast notification here
+    }
   };
 
   const migrateDeviceData = async (): Promise<void> => {

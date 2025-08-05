@@ -3,6 +3,7 @@ import { authService } from '../services/authService';
 import { ApiError } from '../utils/apiError';
 import { ApiResponse } from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
+import { appConfig } from '../config/env';
 import passport from '../config/passport';
 
 // Custom signup
@@ -76,6 +77,19 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     }
     throw new ApiError(401, 'Login failed');
   }
+});
+
+// Get Google OAuth URL endpoint
+export const getGoogleAuthUrl = asyncHandler(async (req: Request, res: Response) => {
+  const { deviceId } = req.query;
+  const baseUrl = `${appConfig.urls.server}/api/auth/google`;
+  const url = deviceId ? `${baseUrl}?deviceId=${deviceId}` : baseUrl;
+  
+  res.status(200).json(
+    new ApiResponse(200, 'Google OAuth URL retrieved successfully', {
+      url
+    })
+  );
 });
 
 // Google OAuth initiate

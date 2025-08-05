@@ -53,9 +53,18 @@ export const authApi = {
 // Google OAuth2 helpers
 export const googleAuth = {
   // Get Google OAuth2 URL with current device ID for migration
-  getGoogleAuthUrl: (deviceId?: string): string => {
-    const baseUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/google`;
-    return deviceId ? `${baseUrl}?deviceId=${deviceId}` : baseUrl;
+  getGoogleAuthUrl: async (deviceId?: string): Promise<string> => {
+    try {
+      // Get OAuth URL from backend configuration
+      const response = await api.get('/auth/google-url');
+      const baseUrl = response.data.data.url;
+      return deviceId ? `${baseUrl}?deviceId=${deviceId}` : baseUrl;
+    } catch (error) {
+      console.error('Failed to get Google OAuth URL from backend, using fallback:', error);
+      // Fallback to client-side construction
+      const baseUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/google`;
+      return deviceId ? `${baseUrl}?deviceId=${deviceId}` : baseUrl;
+    }
   },
 
   // Handle OAuth2 callback (called from redirect)

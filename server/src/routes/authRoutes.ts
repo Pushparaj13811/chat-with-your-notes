@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   signup,
   login,
+  getGoogleAuthUrl,
   googleAuth,
   googleCallback,
   verifyEmail,
@@ -28,6 +29,7 @@ router.post('/request-password-reset', requestPasswordReset);
 router.post('/reset-password', resetPassword);
 
 // Google OAuth routes
+router.get('/google-url', getGoogleAuthUrl);
 router.get('/google', googleAuth);
 router.get('/google/callback', googleCallback);
 
