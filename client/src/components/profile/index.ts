@@ -1,0 +1,10 @@
+// Export all profile components for easy importing
+export { default as UserAvatar } from './UserAvatar';
+export { default as ProfileCard } from './ProfileCard';
+export { default as ProfileHeader } from './ProfileHeader';
+export { default as UserInfo } from './UserInfo';
+export { default as MessageUsageCard } from './MessageUsageCard';
+export { default as KeyboardShortcutsCard } from './KeyboardShortcutsCard';
+export { default as NavigationTabs } from './NavigationTabs';
+export { default as UpgradeCard } from './UpgradeCard';
+export { default as DangerZone } from './DangerZone';
