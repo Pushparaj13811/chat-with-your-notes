@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs/promises';
 import { uploadFile, getFiles, removeFile, generateFileQuestions } from '../controllers/fileController';
 import { 
   uploadChunk, 
@@ -10,37 +8,12 @@ import {
   initializeChunkedUpload,
   chunkUpload 
 } from '../controllers/chunkedUploadController';
-import { requireDeviceId, requireDeviceOwnership } from '../middleware/deviceAuth';
+import { requireDeviceOrUser, requireResourceOwnership } from '../middleware/auth';
 
 const router = Router();
 
-// Ensure uploads directory exists
-const uploadsDir = process.env.UPLOAD_DIR || './uploads';
-
-async function ensureUploadsDir() {
-  try {
-    await fs.access(uploadsDir);
-  } catch {
-    await fs.mkdir(uploadsDir, { recursive: true });
-  }
-}
-
-ensureUploadsDir();
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: async (req, file, cb) => {
-    await ensureUploadsDir();
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  }
-});
-
-const fileFilter = (req: any, file: any, cb: any) => {
+// Configure multer for file uploads with memory storage (for Cloudinary)
+const fileFilter = (_req: any, file: any, cb: any) => {
   const allowedTypes = [
     'application/pdf',
     'text/plain',
@@ -55,24 +28,24 @@ const fileFilter = (req: any, file: any, cb: any) => {
 };
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(), // Use memory storage for Cloudinary
   fileFilter,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760') // 10MB default
+    fileSize: parseInt(process.env.MAX_FILE_SIZE || '104857600') // 100MB default
   }
 });
 
-// Routes with device authentication
-router.post('/upload', requireDeviceId, upload.single('file') as any, uploadFile);
+// Routes with device or user authentication
+router.post('/upload', requireDeviceOrUser, upload.single('file') as any, uploadFile);
 
 // Chunked upload routes
-router.post('/upload-chunk', requireDeviceId, chunkUpload.single('chunk') as any, uploadChunk);
-router.get('/upload-progress/:chunkDirName', requireDeviceId, getChunkProgress);
-router.delete('/upload-cancel/:chunkDirName', requireDeviceId, cancelChunkedUpload);
-router.post('/upload-initialize', requireDeviceId, initializeChunkedUpload);
+router.post('/upload-chunk', requireDeviceOrUser, chunkUpload.single('chunk') as any, uploadChunk);
+router.get('/upload-progress/:chunkDirName', requireDeviceOrUser, getChunkProgress);
+router.delete('/upload-cancel/:chunkDirName', requireDeviceOrUser, cancelChunkedUpload);
+router.post('/upload-initialize', requireDeviceOrUser, initializeChunkedUpload);
 
-router.get('/files', requireDeviceId, getFiles);
-router.delete('/files/:fileId', requireDeviceId, requireDeviceOwnership('file'), removeFile);
-router.get('/files/:fileId/questions', requireDeviceId, requireDeviceOwnership('file'), generateFileQuestions);
+router.get('/files', requireDeviceOrUser, getFiles);
+router.delete('/files/:fileId', requireDeviceOrUser, requireResourceOwnership('file'), removeFile);
+router.get('/files/:fileId/questions', requireDeviceOrUser, requireResourceOwnership('file'), generateFileQuestions);
 
 export default router; 

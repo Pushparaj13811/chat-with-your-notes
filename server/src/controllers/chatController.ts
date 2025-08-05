@@ -15,16 +15,17 @@ import { asyncHandler } from '../utils/asyncHandler';
 export const askQuestion = asyncHandler(async (req: Request, res: Response) => {
     const { question, fileIds, chatSessionId } = req.body;
     const deviceId = (req as any).deviceId;
+    const userId = req.user?.id;
 
     if (!question || !fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
         throw new ApiError(400, 'Question and a non-empty array of fileIds are required');
     }
 
-    if (!deviceId) {
-        throw new ApiError(401, 'Device not authenticated');
+    if (!userId && !deviceId) {
+        throw new ApiError(401, 'Authentication required');
     }
 
-    const response = await processQuestion({ question, fileIds, chatSessionId, deviceId });
+    const response = await processQuestion({ question, fileIds, chatSessionId, deviceId, userId });
 
     return res
         .status(200)
@@ -38,16 +39,17 @@ export const askQuestion = asyncHandler(async (req: Request, res: Response) => {
 export const getHistory = asyncHandler(async (req: Request, res: Response) => {
     const { chatSessionId } = req.params;
     const deviceId = (req as any).deviceId;
+    const userId = req.user?.id;
 
     if (!chatSessionId) {
         throw new ApiError(400, 'Chat Session ID is required');
     }
 
-    if (!deviceId) {
-        throw new ApiError(401, 'Device not authenticated');
+    if (!userId && !deviceId) {
+        throw new ApiError(401, 'Authentication required');
     }
 
-    const history = await getChatHistory(chatSessionId, deviceId);
+    const history = await getChatHistory(chatSessionId, deviceId, userId);
 
     return res
         .status(200)
@@ -60,12 +62,13 @@ export const getHistory = asyncHandler(async (req: Request, res: Response) => {
 
 export const getAllSessions = asyncHandler(async (req: Request, res: Response) => {
     const deviceId = (req as any).deviceId;
+    const userId = req.user?.id;
 
-    if (!deviceId) {
-        throw new ApiError(401, 'Device not authenticated');
+    if (!userId && !deviceId) {
+        throw new ApiError(401, 'Authentication required');
     }
 
-    const sessions = await getAllChatSessions(deviceId);
+    const sessions = await getAllChatSessions(deviceId, userId);
     return res
         .status(200)
         .json(
@@ -78,16 +81,17 @@ export const getAllSessions = asyncHandler(async (req: Request, res: Response) =
 export const deleteSession = asyncHandler(async (req: Request, res: Response) => {
     const { chatSessionId } = req.params;
     const deviceId = (req as any).deviceId;
+    const userId = req.user?.id;
 
     if (!chatSessionId) {
         throw new ApiError(400, 'Chat Session ID is required');
     }
 
-    if (!deviceId) {
-        throw new ApiError(401, 'Device not authenticated');
+    if (!userId && !deviceId) {
+        throw new ApiError(401, 'Authentication required');
     }
 
-    await deleteChatSession(chatSessionId, deviceId);
+    await deleteChatSession(chatSessionId, deviceId, userId);
 
     return res
         .status(200)

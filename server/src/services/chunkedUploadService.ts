@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import { createWriteStream } from 'fs';
 import path from 'path';
 import { ApiError } from '../utils/apiError';
+import cloudinaryService from './cloudinary';
 
 export interface ChunkMetadata {
   fileName: string;
@@ -9,7 +10,9 @@ export interface ChunkMetadata {
   totalChunks: number;
   fileSize: number;
   mimeType: string;
-  deviceId: string;
+  deviceId?: string;
+  userId?: string;
+  useCloudinary?: boolean;
 }
 
 export interface ChunkInfo {
@@ -36,10 +39,10 @@ async function ensureTempDir(): Promise<void> {
 /**
  * Generate unique chunk directory name for a file
  */
-function generateChunkDirName(fileName: string, deviceId: string): string {
+function generateChunkDirName(fileName: string, identifier: string): string {
   const timestamp = Date.now();
   const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-  return `${sanitizedFileName}_${deviceId}_${timestamp}`;
+  return `${sanitizedFileName}_${identifier}_${timestamp}`;
 }
 
 /**
@@ -63,27 +66,78 @@ export async function storeChunk(
   chunk: Buffer,
   metadata: ChunkMetadata
 ): Promise<{ chunkDirName: string; chunkPath: string }> {
-  await ensureTempDir();
+  const identifier = metadata.userId || metadata.deviceId || 'anonymous';
+  const chunkDirName = generateChunkDirName(metadata.fileName, identifier);
   
-  const chunkDirName = generateChunkDirName(metadata.fileName, metadata.deviceId);
-  const chunkDirPath = getChunkDirPath(chunkDirName);
-  const chunkPath = getChunkFilePath(chunkDirPath, metadata.chunkIndex);
-  
-  // Create chunk directory if it doesn't exist
-  try {
-    await fs.access(chunkDirPath);
-  } catch {
-    await fs.mkdir(chunkDirPath, { recursive: true });
+  if (metadata.useCloudinary) {
+    // Store chunk in Cloudinary
+    const chunkFileName = `${chunkDirName}_chunk_${metadata.chunkIndex}`;
+    const cloudinaryResult = await cloudinaryService.uploadChunk(
+      chunk,
+      chunkFileName,
+      'chat-notes-chunks'
+    );
+    
+    // Still store metadata locally for tracking
+    await ensureTempDir();
+    const chunkDirPath = getChunkDirPath(chunkDirName);
+    try {
+      await fs.access(chunkDirPath);
+    } catch {
+      await fs.mkdir(chunkDirPath, { recursive: true });
+    }
+    
+    const metadataPath = path.join(chunkDirPath, 'metadata.json');
+    const enhancedMetadata = {
+      ...metadata,
+      cloudinaryChunks: {
+        [`chunk_${metadata.chunkIndex}`]: {
+          publicId: cloudinaryResult.public_id,
+          url: cloudinaryResult.secure_url
+        }
+      }
+    };
+    
+    // Read existing metadata and merge
+    try {
+      const existingData = await fs.readFile(metadataPath, 'utf-8');
+      const existing = JSON.parse(existingData);
+      if (existing.cloudinaryChunks) {
+        enhancedMetadata.cloudinaryChunks = {
+          ...existing.cloudinaryChunks,
+          ...enhancedMetadata.cloudinaryChunks
+        };
+      }
+    } catch {
+      // File doesn't exist yet, that's fine
+    }
+    
+    await fs.writeFile(metadataPath, JSON.stringify(enhancedMetadata, null, 2));
+    
+    return { chunkDirName, chunkPath: cloudinaryResult.secure_url };
+  } else {
+    // Store chunk locally (existing behavior)
+    await ensureTempDir();
+    
+    const chunkDirPath = getChunkDirPath(chunkDirName);
+    const chunkPath = getChunkFilePath(chunkDirPath, metadata.chunkIndex);
+    
+    // Create chunk directory if it doesn't exist
+    try {
+      await fs.access(chunkDirPath);
+    } catch {
+      await fs.mkdir(chunkDirPath, { recursive: true });
+    }
+    
+    // Store chunk metadata
+    const metadataPath = path.join(chunkDirPath, 'metadata.json');
+    await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+    
+    // Write chunk to file
+    await fs.writeFile(chunkPath, chunk);
+    
+    return { chunkDirName, chunkPath };
   }
-  
-  // Store chunk metadata
-  const metadataPath = path.join(chunkDirPath, 'metadata.json');
-  await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
-  
-  // Write chunk to file
-  await fs.writeFile(chunkPath, chunk);
-  
-  return { chunkDirName, chunkPath };
 }
 
 /**

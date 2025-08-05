@@ -3,20 +3,47 @@ import { generateEmbedding } from '../config/gemini';
 import { extractTextFromFile, splitTextIntoChunks } from '../utils/textProcessor';
 import fs from 'fs/promises';
 import { textModel } from '../config/gemini';
+import cloudinaryService from './cloudinary';
 
 export interface UploadedFile {
   originalname: string;
   filename: string;
   mimetype: string;
   size: number;
-  path: string;
-  deviceId: string;
+  cloudinaryUrl?: string;
+  cloudinaryPublicId?: string;
+  path?: string;
+  userId?: string;
+  deviceId?: string;
 }
 
 export async function processAndStoreFile(uploadedFile: UploadedFile): Promise<string> {
   try {
-    // Extract text from file
-    const text = await extractTextFromFile(uploadedFile.path, uploadedFile.mimetype);
+    // Extract text from file - download from Cloudinary if needed
+    let text: string;
+    if (uploadedFile.cloudinaryUrl) {
+      // For Cloudinary files, we need to download and process them
+      const response = await fetch(uploadedFile.cloudinaryUrl);
+      const buffer = await response.arrayBuffer();
+      
+      // Create a proper temp file path with extension
+      const ext = uploadedFile.originalname.split('.').pop() || 'tmp';
+      const tempDir = process.env.TEMP_UPLOAD_DIR || './temp-uploads';
+      const tempPath = `${tempDir}/temp_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+      
+      // Ensure temp directory exists
+      await fs.mkdir(tempDir, { recursive: true }).catch(() => {});
+      
+      await fs.writeFile(tempPath, Buffer.from(buffer));
+      text = await extractTextFromFile(tempPath, uploadedFile.mimetype);
+      // Clean up temp file
+      await fs.unlink(tempPath).catch(() => {}); 
+    } else if (uploadedFile.path) {
+      // For local files
+      text = await extractTextFromFile(uploadedFile.path, uploadedFile.mimetype);
+    } else {
+      throw new Error('No file path or Cloudinary URL provided');
+    }
     // Generate 6 questions from the file content (only at upload time)
     let questions: string[] = [];
     if (text && text.trim().length > 100) {
@@ -48,7 +75,10 @@ export async function processAndStoreFile(uploadedFile: UploadedFile): Promise<s
         originalName: uploadedFile.originalname,
         mimeType: uploadedFile.mimetype,
         size: uploadedFile.size,
-        path: uploadedFile.path,
+        path: uploadedFile.cloudinaryUrl || uploadedFile.path || '',
+        cloudinaryUrl: uploadedFile.cloudinaryUrl,
+        cloudinaryPublicId: uploadedFile.cloudinaryPublicId,
+        userId: uploadedFile.userId,
         deviceId: uploadedFile.deviceId,
         questions: questions.length > 0 ? questions : undefined,
       }
@@ -152,12 +182,26 @@ function calculateCosineSimilarity(vecA: number[], vecB: number[]): number {
   return dotProduct / (normA * normB);
 }
 
-export async function getAllFiles(deviceId: string): Promise<any[]> {
+export async function getAllFiles(userId?: string, deviceId?: string): Promise<any[]> {
   try {
+    const whereClause: any = {
+      OR: []
+    };
+    
+    if (userId) {
+      whereClause.OR.push({ userId: userId });
+    }
+    
+    if (deviceId) {
+      whereClause.OR.push({ deviceId: deviceId });
+    }
+    
+    if (whereClause.OR.length === 0) {
+      throw new Error('Either userId or deviceId must be provided');
+    }
+    
     return await prisma.file.findMany({
-      where: {
-        deviceId: deviceId
-      },
+      where: whereClause,
       include: {
         _count: {
           select: {
@@ -176,24 +220,47 @@ export async function getAllFiles(deviceId: string): Promise<any[]> {
   }
 }
 
-export async function deleteFile(fileId: string, deviceId: string): Promise<void> {
+export async function deleteFile(fileId: string, userId?: string, deviceId?: string): Promise<void> {
   try {
+    const whereClause: any = {
+      id: fileId,
+      OR: []
+    };
+    
+    if (userId) {
+      whereClause.OR.push({ userId: userId });
+    }
+    
+    if (deviceId) {
+      whereClause.OR.push({ deviceId: deviceId });
+    }
+    
+    if (whereClause.OR.length === 0) {
+      throw new Error('Either userId or deviceId must be provided');
+    }
+    
     const file = await prisma.file.findFirst({
-      where: { 
-        id: fileId,
-        deviceId: deviceId
-      }
+      where: whereClause
     });
 
     if (!file) {
       throw new Error('File not found or access denied');
     }
 
-    // Delete file from filesystem
-    try {
-      await fs.unlink(file.path);
-    } catch (fsError) {
-      console.warn('Could not delete file from filesystem:', fsError);
+    // Delete file from Cloudinary if it exists there
+    if (file.cloudinaryPublicId) {
+      try {
+        await cloudinaryService.delete(file.cloudinaryPublicId, 'raw');
+      } catch (cloudinaryError) {
+        console.warn('Could not delete file from Cloudinary:', cloudinaryError);
+      }
+    } else if (file.path) {
+      // Delete file from filesystem for backward compatibility
+      try {
+        await fs.unlink(file.path);
+      } catch (fsError) {
+        console.warn('Could not delete file from filesystem:', fsError);
+      }
     }
 
     // Delete from database (chunks and conversations will be deleted via cascade)

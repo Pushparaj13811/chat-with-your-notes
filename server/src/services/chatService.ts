@@ -12,7 +12,8 @@ export interface ChatRequest {
   question: string;
   fileIds: string[];
   chatSessionId?: string;
-  deviceId: string;
+  deviceId?: string;
+  userId?: string;
 }
 
 export interface ChatResponse {
@@ -36,7 +37,7 @@ export interface ConversationMemory {
 }
 
 export async function processQuestion(request: ChatRequest): Promise<ChatResponse> {
-  const { question, fileIds, chatSessionId: existingSessionId, deviceId } = request;
+  const { question, fileIds, chatSessionId: existingSessionId, deviceId, userId } = request;
 
   let session;
   let chatSessionId = existingSessionId;
@@ -46,7 +47,7 @@ export async function processQuestion(request: ChatRequest): Promise<ChatRespons
     session = await prisma.chatSession.findFirst({ 
       where: { 
         id: chatSessionId,
-        deviceId: deviceId
+        ...(userId ? { userId } : { deviceId })
       },
       include: { messages: true }
     });
@@ -57,7 +58,7 @@ export async function processQuestion(request: ChatRequest): Promise<ChatRespons
     const newSession = await prisma.chatSession.create({
       data: {
         title: sessionTitle,
-        deviceId: deviceId,
+        ...(userId ? { userId } : { deviceId }),
         files: {
           connect: fileIds.map(id => ({ id })),
         },
@@ -175,12 +176,12 @@ export async function getConversationMemory(chatSessionId: string, deviceId: str
   };
 }
 
-export async function getChatHistory(chatSessionId: string, deviceId: string) {
-  // Verify device ownership
+export async function getChatHistory(chatSessionId: string, deviceId?: string, userId?: string) {
+  // Verify ownership
   const session = await prisma.chatSession.findFirst({
     where: { 
       id: chatSessionId,
-      deviceId: deviceId
+      ...(userId ? { userId } : { deviceId })
     }
   });
 
@@ -202,10 +203,10 @@ export async function getChatHistory(chatSessionId: string, deviceId: string) {
   }));
 }
 
-export async function getAllChatSessions(deviceId: string) {
+export async function getAllChatSessions(deviceId?: string, userId?: string) {
   const sessions = await prisma.chatSession.findMany({
     where: {
-      deviceId: deviceId
+      ...(userId ? { userId } : { deviceId })
     },
     orderBy: { createdAt: 'desc' },
     select: {
@@ -239,12 +240,12 @@ export async function getAllChatSessions(deviceId: string) {
   return sessionsWithStats;
 }
 
-export async function deleteChatSession(chatSessionId: string, deviceId: string) {
-  // Verify device ownership
+export async function deleteChatSession(chatSessionId: string, deviceId?: string, userId?: string) {
+  // Verify ownership
   const session = await prisma.chatSession.findFirst({
     where: { 
       id: chatSessionId,
-      deviceId: deviceId
+      ...(userId ? { userId } : { deviceId })
     }
   });
 

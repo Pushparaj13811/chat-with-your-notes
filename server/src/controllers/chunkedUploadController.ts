@@ -16,6 +16,8 @@ import { processAndStoreFile } from '../services/fileService';
 import { ApiError } from '../utils/apiError';
 import { ApiResponse } from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
+import cloudinaryService from '../services/cloudinary';
+import fs from 'fs/promises';
 
 // Configure multer for chunk uploads (no file size limit since we're handling chunks)
 const chunkUpload = multer({
@@ -30,10 +32,12 @@ const chunkUpload = multer({
  */
 export const uploadChunk = asyncHandler(async (req: Request, res: Response) => {
   try {
-    // Validate device authentication
+    // Validate authentication
+    const userId = req.user?.id;
     const deviceId = (req as any).deviceId;
-    if (!deviceId) {
-      throw new ApiError(401, 'Device not authenticated');
+    
+    if (!userId && !deviceId) {
+      throw new ApiError(401, 'Authentication required');
     }
 
     // Validate required fields
@@ -72,14 +76,17 @@ export const uploadChunk = asyncHandler(async (req: Request, res: Response) => {
       throw new ApiError(400, 'No chunk file uploaded');
     }
 
-    // Create metadata
+    // Create metadata - use Cloudinary for large files
+    const useCloudinary = fileSizeNum > 50 * 1024 * 1024; // Use Cloudinary for files > 50MB
     const metadata: ChunkMetadata = {
       fileName,
       chunkIndex: chunkIndexNum,
       totalChunks: totalChunksNum,
       fileSize: fileSizeNum,
       mimeType,
-      deviceId
+      deviceId: deviceId || '',
+      userId: userId,
+      useCloudinary
     };
 
     // Store the chunk
@@ -100,13 +107,26 @@ export const uploadChunk = asyncHandler(async (req: Request, res: Response) => {
         // Merge chunks into final file
         await mergeChunks(chunkDirName, finalPath);
         
+        // Upload merged file to Cloudinary
+        const fileBuffer = await fs.readFile(finalPath);
+        const cloudinaryResult = await cloudinaryService.upload(
+          fileBuffer,
+          fileName,
+          'chat-notes'
+        );
+
+        // Delete the temporary merged file
+        await fs.unlink(finalPath).catch(() => {});
+        
         // Process the merged file
         const uploadedFile = {
           originalname: fileName,
-          filename: finalFileName,
+          filename: cloudinaryResult.public_id,
           mimetype: mimeType,
           size: fileSizeNum,
-          path: finalPath,
+          cloudinaryUrl: cloudinaryResult.secure_url,
+          cloudinaryPublicId: cloudinaryResult.public_id,
+          userId: userId,
           deviceId: deviceId
         };
 

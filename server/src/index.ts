@@ -1,36 +1,94 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import multer from 'multer';
 import cookieParser from 'cookie-parser';
+import session from 'express-session';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import fileRoutes from './routes/fileRoutes';
 import chatRoutes from './routes/chatRoutes';
+import authRoutes from './routes/authRoutes';
 import { cleanupOldChunks } from './services/chunkedUploadService';
-
-// Load environment variables
-dotenv.config();
+import passport from './config/passport';
+import { appConfig, isDev } from './config/env';
 
 // Fix SSL certificate verification issues for Google Generative AI API
-if (process.env.NODE_ENV !== 'production') {
+if (isDev()) {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 }
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-    origin:
-        process.env.NODE_ENV === 'production'
-            ? ['https://yourdomain.com']
-            : ['http://localhost:5173', 'http://localhost:3000'],
+    origin: appConfig.cors.origin,
     credentials: true
 }));
 
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Session configuration for Passport
+app.use(session({
+    secret: appConfig.auth.sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        secure: appConfig.server.isProduction,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Image proxy endpoint for Google profile pictures
+app.get('/api/proxy-image', async (req, res) => {
+    try {
+        const { url } = req.query;
+        
+        if (!url || typeof url !== 'string') {
+            return res.status(400).json({ error: 'URL parameter is required' });
+        }
+
+        // Only allow Google User Content URLs for security
+        if (!url.includes('googleusercontent.com')) {
+            return res.status(403).json({ error: 'Only Google User Content URLs are allowed' });
+        }
+
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; Bot/1.0)',
+                'Referer': 'https://accounts.google.com/'
+            }
+        });
+
+        if (!response.ok) {
+            return res.status(response.status).json({ error: 'Failed to fetch image' });
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType?.startsWith('image/')) {
+            return res.status(400).json({ error: 'Invalid content type' });
+        }
+
+        // Set appropriate headers
+        res.set({
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
+            'Access-Control-Allow-Origin': '*'
+        });
+
+        // Pipe the image data
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        res.send(buffer);
+    } catch (error) {
+        console.error('Image proxy error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -42,6 +100,7 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api', fileRoutes);
 app.use('/api', chatRoutes);
 
@@ -92,11 +151,11 @@ async function startServer() {
     try {
         await connectDatabase(); // Connect to DB (Prisma or similar)
 
-        app.listen(PORT, () => {
-            console.log(`🚀 Server running on port ${PORT}`);
-            console.log(`📊 Health check: http://localhost:${PORT}/health`);
-            console.log(`📁 File upload: http://localhost:${PORT}/api/upload`);
-            console.log(`💬 Chat endpoint: http://localhost:${PORT}/api/ask`);
+        app.listen(appConfig.server.port, () => {
+            console.log(`🚀 Server running on port ${appConfig.server.port}`);
+            console.log(`📊 Health check: http://localhost:${appConfig.server.port}/health`);
+            console.log(`📁 File upload: http://localhost:${appConfig.server.port}/api/upload`);
+            console.log(`💬 Chat endpoint: http://localhost:${appConfig.server.port}/api/ask`);
         });
 
         // Set up periodic cleanup of old chunks (every 6 hours)

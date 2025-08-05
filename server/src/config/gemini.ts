@@ -1,10 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { appConfig } from './env';
 
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY is required');
+if (!appConfig.apis.gemini.isEnabled) {
+  throw new Error('GEMINI_API_KEY is required but not configured');
 }
 
-export const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+export const genAI = new GoogleGenerativeAI(appConfig.apis.gemini.apiKey!);
 
 export const embeddingModel = genAI.getGenerativeModel({ model: 'embedding-001' });
 export const textModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
