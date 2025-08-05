@@ -53,7 +53,7 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-100 to-primary-200">
-      <div className='max-w-6xl mx-auto p-6'>
+      <div className='max-w-6xl mx-auto'>
         <ProfileHeader
           onBackClick={handleBackToChat}
           onLogout={handleLogout}
