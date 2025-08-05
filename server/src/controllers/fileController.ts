@@ -5,6 +5,7 @@ import { ApiError } from '../utils/apiError';
 import { ApiResponse } from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
 import { prisma } from '../config/database';
+import cloudinaryService from '../services/cloudinary';
 
 export const uploadFile = asyncHandler(async (req: Request, res: Response) => {
   try {
@@ -12,17 +13,28 @@ export const uploadFile = asyncHandler(async (req: Request, res: Response) => {
       throw new ApiError(400, 'No file uploaded');
     }
 
+    const userId = req.user?.id;
     const deviceId = (req as any).deviceId;
-    if (!deviceId) {
-      throw new ApiError(401, 'Device not authenticated');
+    
+    if (!userId && !deviceId) {
+      throw new ApiError(401, 'Authentication required');
     }
+
+    // Upload file to Cloudinary
+    const cloudinaryResult = await cloudinaryService.upload(
+      req.file.buffer,
+      req.file.originalname,
+      'chat-notes'
+    );
 
     const uploadedFile: UploadedFile = {
       originalname: req.file.originalname,
-      filename: req.file.filename,
+      filename: cloudinaryResult.public_id,
       mimetype: req.file.mimetype,
       size: req.file.size,
-      path: req.file.path,
+      cloudinaryUrl: cloudinaryResult.secure_url,
+      cloudinaryPublicId: cloudinaryResult.public_id,
+      userId: userId,
       deviceId: deviceId
     };
 
@@ -47,12 +59,14 @@ export const uploadFile = asyncHandler(async (req: Request, res: Response) => {
 
 export const getFiles = asyncHandler(async (req: Request, res: Response) => {
   try {
+    const userId = req.user?.id;
     const deviceId = (req as any).deviceId;
-    if (!deviceId) {
-      throw new ApiError(401, 'Device not authenticated');
+    
+    if (!userId && !deviceId) {
+      throw new ApiError(401, 'Authentication required');
     }
 
-    const files = await getAllFiles(deviceId);
+    const files = await getAllFiles(userId, deviceId);
     return res.status(200).json(new ApiResponse(200, 'Files fetched successfully', files));
   } catch (error) {
     throw new ApiError(500, 'Failed to fetch files');
@@ -62,17 +76,18 @@ export const getFiles = asyncHandler(async (req: Request, res: Response) => {
 export const removeFile = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { fileId } = req.params;
+    const userId = req.user?.id;
     const deviceId = (req as any).deviceId;
 
     if (!fileId) {
       throw new ApiError(400, 'File ID is required');
     }
 
-    if (!deviceId) {
-      throw new ApiError(401, 'Device not authenticated');
+    if (!userId && !deviceId) {
+      throw new ApiError(401, 'Authentication required');
     }
 
-    await deleteFile(fileId, deviceId);
+    await deleteFile(fileId, userId, deviceId);
 
     return res
       .status(200)
@@ -92,15 +107,19 @@ export const removeFile = asyncHandler(async (req: Request, res: Response) => {
 export const generateFileQuestions = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { fileId } = req.params;
+    const userId = req.user?.id;
     const deviceId = (req as any).deviceId;
 
     if (!fileId) throw new ApiError(400, 'File ID is required');
-    if (!deviceId) throw new ApiError(401, 'Device not authenticated');
+    if (!userId && !deviceId) throw new ApiError(401, 'Authentication required');
 
     const file = await prisma.file.findFirst({ 
       where: { 
         id: fileId,
-        deviceId: deviceId
+        OR: [
+          { userId: userId },
+          { deviceId: deviceId }
+        ]
       } 
     });
     
