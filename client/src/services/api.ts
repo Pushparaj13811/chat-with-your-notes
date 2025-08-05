@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getOrCreateDeviceId } from '../utils/deviceManager';
 import type { ChatSession } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
 
 // Create axios instance with default config
 const api = axios.create({

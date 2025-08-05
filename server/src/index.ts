@@ -43,6 +43,53 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Image proxy endpoint for Google profile pictures
+app.get('/api/proxy-image', async (req, res) => {
+    try {
+        const { url } = req.query;
+        
+        if (!url || typeof url !== 'string') {
+            return res.status(400).json({ error: 'URL parameter is required' });
+        }
+
+        // Only allow Google User Content URLs for security
+        if (!url.includes('googleusercontent.com')) {
+            return res.status(403).json({ error: 'Only Google User Content URLs are allowed' });
+        }
+
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; Bot/1.0)',
+                'Referer': 'https://accounts.google.com/'
+            }
+        });
+
+        if (!response.ok) {
+            return res.status(response.status).json({ error: 'Failed to fetch image' });
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType?.startsWith('image/')) {
+            return res.status(400).json({ error: 'Invalid content type' });
+        }
+
+        // Set appropriate headers
+        res.set({
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=86400', // Cache for 24 hours
+            'Access-Control-Allow-Origin': '*'
+        });
+
+        // Pipe the image data
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        res.send(buffer);
+    } catch (error) {
+        console.error('Image proxy error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.status(200).json({

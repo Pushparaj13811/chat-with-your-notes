@@ -54,7 +54,7 @@ export const authApi = {
 export const googleAuth = {
   // Get Google OAuth2 URL with current device ID for migration
   getGoogleAuthUrl: (deviceId?: string): string => {
-    const baseUrl = `${import.meta.env.VITE_API_URL || ''}/auth/google`;
+    const baseUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/google`;
     return deviceId ? `${baseUrl}?deviceId=${deviceId}` : baseUrl;
   },
 
