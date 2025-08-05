@@ -14,7 +14,7 @@ import { UploadCloud, Files, History } from 'lucide-react';
 
 // Protected App Component (inside AuthProvider)
 const ProtectedApp: React.FC = () => {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading } = useAuth();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [selectedChatSessionId, setSelectedChatSessionId] = useState<string | null>(null);
@@ -71,9 +71,6 @@ const ProtectedApp: React.FC = () => {
   }
 
   // Redirect to login if not authenticated
-  if (!isAuthenticated) {
-    return <Navigate to="/auth/login" replace />;
-}
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-primary-100 to-primary-200 border-primary-200 text-primary-900 font-sans opacity-0 animate-[fadeIn_0.8s_ease-out_forwards]">

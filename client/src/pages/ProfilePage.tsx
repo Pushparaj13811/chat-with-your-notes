@@ -53,13 +53,11 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-100 to-primary-200">
-      <div className='max-w-6xl mx-auto'>
+      <div className="max-w-7xl mx-auto p-6 pt-0">
         <ProfileHeader
           onBackClick={handleBackToChat}
           onLogout={handleLogout}
         />
-      </div>
-      <div className="max-w-6xl mx-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column */}
           <div className="space-y-6">

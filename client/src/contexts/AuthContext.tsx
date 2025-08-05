@@ -126,10 +126,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Automatically migrate device data
       try {
         const deviceId = getOrCreateDeviceId();
+        console.log(`🔍 Attempting migration with deviceId: ${deviceId}`);
         await authApi.migrateDeviceData(deviceId);
         console.log('✅ Device data migrated successfully');
       } catch (migrationError) {
-        console.warn('Device data migration failed:', migrationError);
+        console.error('❌ Device data migration failed:', migrationError);
         // Don't fail login if migration fails
       }
     } catch (error) {
@@ -213,10 +214,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Automatically migrate device data
       try {
         const deviceId = getOrCreateDeviceId();
+        console.log(`🔍 Attempting migration with deviceId: ${deviceId}`);
         await authApi.migrateDeviceData(deviceId);
         console.log('✅ Device data migrated successfully');
       } catch (migrationError) {
-        console.warn('Device data migration failed:', migrationError);
+        console.error('❌ Device data migration failed:', migrationError);
         // Don't fail login if migration fails
       }
     } catch (error) {
