@@ -13,19 +13,56 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                String        @id @default(cuid())
+  email             String        @unique
+  password          String?       // Hashed password for custom signup (null for OAuth users)
+  name              String?
+  picture           String?       // Google profile picture
+  googleId          String?       @unique // Google OAuth2 ID
+  authProvider      String        @default("custom") // "custom" or "google"
+  isVerified        Boolean       @default(false) // Custom users need email verification
+  verificationToken String?       // For email verification
+  resetToken        String?       // For password reset
+  resetTokenExpiry  DateTime?     // Password reset token expiry
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  files             File[]
+  chatSessions      ChatSession[]
+  devices           Device[]      // Associated devices for migration
+
+  @@map("users")
+}
+
+model Device {
+  id         String   @id @default(cuid())
+  deviceId   String   @unique // The original device identifier
+  userId     String? // Optional - for migration
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  isMigrated Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("devices")
+}
+
 model File {
-  id            String    @id @default(cuid())
-  filename      String    @unique
-  originalName  String
-  mimeType      String
-  size          Int
-  path          String
-  deviceId      String    // Device identifier for access control
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  chunks        Chunk[]
-  chatSessions  ChatSession[] @relation("ChatSessionFiles")
-  questions     Json? // Store generated questions as an array
+  id                 String        @id @default(cuid())
+  filename           String        @unique
+  originalName       String
+  mimeType           String
+  size               Int
+  path               String
+  cloudinaryUrl      String?       // Cloudinary secure URL
+  cloudinaryPublicId String?       // Cloudinary public ID for deletion
+  deviceId           String?       // Device identifier for access control (optional for migration)
+  userId             String?       // User identifier for authenticated users
+  user               User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  chunks             Chunk[]
+  chatSessions       ChatSession[] @relation("ChatSessionFiles")
+  questions          Json?         // Store generated questions as an array
 
   @@map("files")
 }
@@ -47,7 +84,9 @@ model Chunk {
 model ChatSession {
   id                  String        @id @default(cuid())
   title               String
-  deviceId            String        // Device identifier for access control
+  deviceId            String?       // Device identifier for access control (optional for migration)
+  userId              String?       // User identifier for authenticated users
+  user                User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
   files               File[]        @relation("ChatSessionFiles")
