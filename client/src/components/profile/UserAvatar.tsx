@@ -17,45 +17,45 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
   const getSizeClasses = () => {
     switch (size) {
       case 'sm':
-        return 'w-8 h-8';
-      case 'md':
         return 'w-12 h-12';
+      case 'md':
+        return 'w-20 h-20';
       case 'lg':
-        return 'w-16 h-16';
+        return 'w-32 w-32';
       case 'xl':
-        return 'w-44 h-44';
+        return 'w-64 h-64';
       default:
-        return 'w-16 h-16';
+        return 'w-32 h-32';
     }
   };
 
   const getIconSize = () => {
     switch (size) {
       case 'sm':
-        return 'h-4 w-4';
+        return 'w-12 h-12';
       case 'md':
-        return 'h-6 w-6';
+        return 'w-20 h-20';
       case 'lg':
-        return 'h-8 w-8';
+        return 'w-32 w-32';
       case 'xl':
-        return 'h-32 w-32';
+        return 'w-64 h-64';
       default:
-        return 'h-8 w-8';
+        return 'w-32 h-32';
     }
   };
 
   const getPixelSize = () => {
     switch (size) {
       case 'sm':
-        return 32; // 8 * 4 (Tailwind w-8 = 2rem = 32px)
+        return 48; // 8 * 4 (Tailwind w-8 = 2rem = 32px)
       case 'md':
-        return 48; // 12 * 4 (Tailwind w-12 = 3rem = 48px)
+        return 80; // 12 * 4 (Tailwind w-12 = 3rem = 48px)
       case 'lg':
-        return 64; // 16 * 4 (Tailwind w-16 = 4rem = 64px)
+        return 128; // 16 * 4 (Tailwind w-16 = 4rem = 64px)
       case 'xl':
-        return 176; // 44 * 4 (Tailwind w-44 = 11rem = 176px)
+        return 256; // 44 * 4 (Tailwind w-44 = 11rem = 176px)
       default:
-        return 64;
+        return 128;
     }
   };
 
