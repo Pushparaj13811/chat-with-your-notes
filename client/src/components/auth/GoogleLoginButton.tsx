@@ -8,9 +8,14 @@ interface GoogleLoginButtonProps {
 const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ disabled = false }) => {
   const { loginWithGoogle } = useAuth();
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     if (!disabled) {
-      loginWithGoogle();
+      try {
+        await loginWithGoogle();
+      } catch (error) {
+        console.error('Google login failed:', error);
+        // Could show a toast notification here
+      }
     }
   };
 
