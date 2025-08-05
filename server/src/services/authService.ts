@@ -231,53 +231,87 @@ export class AuthService {
     return updatedUser;
   }
 
-  async migrateDeviceDataToUser(deviceId: string, userId: string): Promise<void> {
+  async migrateDeviceDataToUser(deviceId: string, userId: string): Promise<{ migrated: boolean; reason?: string; migratedItems?: { files: number; sessions: number } }> {
+    console.log(`🔍 Starting migration for deviceId=${deviceId}, userId=${userId}`);
+    
+    // Check what data exists for migration (only items with deviceId and no userId)
+    const existingFiles = await prisma.file.findMany({ 
+      where: { 
+        deviceId, 
+        userId: null // Only migrate unassigned files
+      } 
+    });
+    const existingSessions = await prisma.chatSession.findMany({ 
+      where: { 
+        deviceId, 
+        userId: null // Only migrate unassigned sessions
+      } 
+    });
+    
+    console.log(`📊 Found ${existingFiles.length} files and ${existingSessions.length} chat sessions for deviceId=${deviceId} to migrate`);
+    
+    if (existingFiles.length === 0 && existingSessions.length === 0) {
+      console.log(`⚠️ No unassigned data found for deviceId=${deviceId} - nothing to migrate`);
+      return { migrated: false, reason: 'No data found to migrate' };
+    }
+
+    let migratedFiles = 0;
+    let migratedSessions = 0;
+
     await prisma.$transaction(async (tx) => {
-      // Check if device exists and isn't already migrated
-      const device = await tx.device.findUnique({
-        where: { deviceId }
-      });
-
-      if (device && device.isMigrated) {
-        throw new Error('Device data has already been migrated');
-      }
-
-      // Create device record if it doesn't exist
-      if (!device) {
-        await tx.device.create({
-          data: {
-            deviceId,
-            userId,
-            isMigrated: true
-          }
-        });
-      } else {
-        // Update existing device
-        await tx.device.update({
-          where: { deviceId },
-          data: {
-            userId,
-            isMigrated: true
-          }
-        });
-      }
-
-      // Migrate files
+      // Migrate files and clear deviceId
       const fileResults = await tx.file.updateMany({
-        where: { deviceId },
-        data: { userId }
+        where: { 
+          deviceId,
+          userId: null 
+        },
+        data: { 
+          userId,
+          deviceId: null // Clear deviceId after migration
+        }
       });
 
-      // Migrate chat sessions
+      // Migrate chat sessions and messages, then clear deviceId
       const sessionResults = await tx.chatSession.updateMany({
-        where: { deviceId },
-        data: { userId }
+        where: { 
+          deviceId,
+          userId: null 
+        },
+        data: { 
+          userId,
+          deviceId: null // Clear deviceId after migration
+        }
       });
+
+      migratedFiles = fileResults.count;
+      migratedSessions = sessionResults.count;
       
-      console.log(`✅ Migrated ${fileResults.count} files and ${sessionResults.count} chat sessions`);
+      console.log(`✅ Migrated ${migratedFiles} files and ${migratedSessions} chat sessions`);
+
+      // Create or update device record for tracking (but allow future migrations)
+      await tx.device.upsert({
+        where: { deviceId },
+        create: {
+          deviceId,
+          userId,
+          isMigrated: false // Keep false to allow future migrations
+        },
+        update: {
+          userId, // Update to latest user who migrated
+          isMigrated: false // Keep false to allow future migrations
+        }
+      });
 
       console.log(`✅ Migrated data for device ${deviceId} to user ${userId}`);
     });
+    
+    return { 
+      migrated: true, 
+      migratedItems: { 
+        files: migratedFiles, 
+        sessions: migratedSessions 
+      } 
+    };
   }
 }
 
