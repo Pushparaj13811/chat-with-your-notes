@@ -98,6 +98,10 @@ export const requireResourceOwnership = (resourceType: 'file' | 'chatSession') =
         resource = await prisma.file.findUnique({
           where: { id: resourceId }
         });
+      } else if (resourceType === 'chatSession') {
+        resource = await prisma.chatSession.findUnique({
+          where: { id: resourceId }
+        });
       } else {
         resource = await prisma.chatSession.findUnique({
           where: { id: resourceId }
