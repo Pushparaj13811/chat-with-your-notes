@@ -83,7 +83,7 @@ const checkDeviceAuth = (req: Request, res: Response, next: NextFunction) => {
 export const requireResourceOwnership = (resourceType: 'file' | 'chatSession') => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const resourceId = req.params.fileId || req.params.sessionId;
+      const resourceId = req.params.fileId || req.params.sessionId || req.params.chatSessionId;
       const userId = req.user?.id;
       const deviceId = (req as any).deviceId;
 
