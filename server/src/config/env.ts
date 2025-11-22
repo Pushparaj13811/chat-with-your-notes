@@ -2,7 +2,21 @@ import { z } from 'zod';
 import dotenv from 'dotenv';
 
 // Load environment variables
+// Note: Bun automatically loads .env files, but we keep this for compatibility
 dotenv.config();
+
+// Debug: Log environment variable loading status
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔍 Environment variables check:');
+  console.log(`   CLOUDINARY_CLOUD_NAME: ${process.env.CLOUDINARY_CLOUD_NAME ? '✅ Set' : '❌ Missing'}`);
+  console.log(`   CLOUDINARY_API_KEY: ${process.env.CLOUDINARY_API_KEY ? '✅ Set' : '❌ Missing'}`);
+  console.log(`   CLOUDINARY_API_SECRET: ${process.env.CLOUDINARY_API_SECRET ? '✅ Set' : '❌ Missing'}`);
+  console.log(`   GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? '✅ Set' : '❌ Missing'}`);
+  if (process.env.GEMINI_API_KEY) {
+    console.log(`   GEMINI_API_KEY Length: ${process.env.GEMINI_API_KEY.length}`);
+    console.log(`   GEMINI_API_KEY Preview: ${process.env.GEMINI_API_KEY.substring(0, 10)}...`);
+  }
+}
 
 // Define the environment schema with validation
 const envSchema = z.object({
@@ -19,7 +33,7 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(32, 'Session secret must be at least 32 characters'),
   
   // API Keys
-  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().min(1, 'Gemini API key must not be empty').optional(),
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   

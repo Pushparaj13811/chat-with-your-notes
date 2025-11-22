@@ -4,25 +4,40 @@ import type {
   DeleteApiResponse,
   ResourceType,
   UploadApiErrorResponse,
+  ConfigOptions,
 } from "cloudinary";
-import { Readable } from "stream";
 import { appConfig } from "../config/env";
 
 class CloudinaryService {
+  private config: ConfigOptions;
 
   constructor() {
-    this.initialize();
+    this.config = this.initialize();
   }
 
-  private initialize() {
-    cloudinary.config({
+  private initialize(): ConfigOptions {
+    if (!appConfig.cloudinary.cloudName || !appConfig.cloudinary.apiKey || !appConfig.cloudinary.apiSecret) {
+      throw new Error('Cloudinary configuration is incomplete. Please check your environment variables.');
+    }
+
+    const configOptions: ConfigOptions = {
       cloud_name: appConfig.cloudinary.cloudName,
       api_key: appConfig.cloudinary.apiKey,
       api_secret: appConfig.cloudinary.apiSecret,
-      secure: appConfig.server.isProduction,
-    });
-    
+      secure: true,
+    };
+
+    // Configure cloudinary globally
+    cloudinary.config(configOptions);
+
+    // Verify configuration
+    const verifyConfig = cloudinary.config();
     console.log('✅ Cloudinary service initialized successfully');
+    console.log(`   Cloud Name: ${verifyConfig.cloud_name}`);
+    console.log(`   API Key: ${verifyConfig.api_key?.substring(0, 6)}...`);
+    console.log(`   API Secret: ${verifyConfig.api_secret ? '✅ Set' : '❌ Missing'}`);
+
+    return configOptions;
   }
 
   public async upload(
@@ -30,24 +45,39 @@ class CloudinaryService {
     originalName: string,
     folder: string = appConfig.cloudinary.folderName
   ): Promise<UploadApiResponse> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          resource_type: 'raw',
-          public_id: originalName.split('.')[0],
-          overwrite: true,
-          use_filename: true,
-          unique_filename: false,
-        },
-        (error: UploadApiErrorResponse | undefined, result?: UploadApiResponse) => {
-          if (error) reject(error);
-          else resolve(result!);
-        }
-      );
+    // Re-configure cloudinary before upload to ensure credentials are set
+    cloudinary.config(this.config);
 
-      Readable.from(fileBuffer).pipe(uploadStream);
-    });
+    // Verify configuration
+    const currentConfig = cloudinary.config();
+    if (!currentConfig.api_key || !currentConfig.api_secret) {
+      throw new Error('Cloudinary is not properly configured. Missing API credentials.');
+    }
+
+    console.log(`📤 Uploading to Cloudinary: ${originalName}`);
+    console.log(`   Folder: ${folder}`);
+    console.log(`   Config: ${currentConfig.cloud_name} (key: ${currentConfig.api_key?.substring(0, 6)}..., secret: ${currentConfig.api_secret ? 'present' : 'MISSING'})`);
+
+    try {
+      // Convert buffer to base64 data URI
+      const base64File = `data:application/octet-stream;base64,${fileBuffer.toString('base64')}`;
+
+      // Use direct upload method instead of upload_stream for better compatibility
+      const result = await cloudinary.uploader.upload(base64File, {
+        folder: folder,
+        resource_type: 'raw',
+        public_id: originalName.split('.')[0],
+        overwrite: true,
+        use_filename: true,
+        unique_filename: false,
+      });
+
+      console.log(`✅ File uploaded successfully: ${result.secure_url}`);
+      return result;
+    } catch (error) {
+      console.error('❌ Cloudinary upload error:', error);
+      throw error;
+    }
   }
 
   public async uploadChunk(
@@ -55,23 +85,28 @@ class CloudinaryService {
     chunkFileName: string,
     folder: string = 'chat-notes-chunks'
   ): Promise<UploadApiResponse> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder,
-          public_id: chunkFileName,
-          resource_type: 'raw',
-          use_filename: true,
-          unique_filename: false,
-        },
-        (error: UploadApiErrorResponse | undefined, result?: UploadApiResponse) => {
-          if (error) return reject(error);
-          if (result) return resolve(result);
-          reject(new Error('Cloudinary chunk upload failed: No result returned.'));
-        }
-      );
-      Readable.from(chunkBuffer).pipe(uploadStream);
-    });
+    // Re-configure cloudinary before upload
+    cloudinary.config(this.config);
+
+    try {
+      // Convert buffer to base64 data URI
+      const base64File = `data:application/octet-stream;base64,${chunkBuffer.toString('base64')}`;
+
+      // Use direct upload method instead of upload_stream
+      const result = await cloudinary.uploader.upload(base64File, {
+        folder,
+        public_id: chunkFileName,
+        resource_type: 'raw',
+        use_filename: true,
+        unique_filename: false,
+      });
+
+      console.log(`✅ Chunk uploaded successfully: ${chunkFileName}`);
+      return result;
+    } catch (error) {
+      console.error('❌ Cloudinary chunk upload error:', error);
+      throw error;
+    }
   }
 
   public async mergeChunks(

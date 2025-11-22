@@ -19,32 +19,49 @@ export interface UploadedFile {
 
 export async function processAndStoreFile(uploadedFile: UploadedFile): Promise<string> {
   try {
+    console.log(`📄 Processing file: ${uploadedFile.originalname}`);
+    console.log(`   Cloudinary URL: ${uploadedFile.cloudinaryUrl}`);
+    console.log(`   MIME type: ${uploadedFile.mimetype}`);
+
     // Extract text from file - download from Cloudinary if needed
     let text: string;
     if (uploadedFile.cloudinaryUrl) {
+      console.log(`📥 Downloading file from Cloudinary...`);
       // For Cloudinary files, we need to download and process them
       const response = await fetch(uploadedFile.cloudinaryUrl);
+
+      if (!response.ok) {
+        throw new Error(`Failed to download file from Cloudinary: ${response.status} ${response.statusText}`);
+      }
+
       const buffer = await response.arrayBuffer();
-      
+      console.log(`   Downloaded ${buffer.byteLength} bytes`);
+
       // Create a proper temp file path with extension
       const ext = uploadedFile.originalname.split('.').pop() || 'tmp';
       const tempDir = process.env.TEMP_UPLOAD_DIR || './temp-uploads';
       const tempPath = `${tempDir}/temp_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
-      
+
+      console.log(`   Temp file: ${tempPath}`);
+
       // Ensure temp directory exists
       await fs.mkdir(tempDir, { recursive: true }).catch(() => {});
-      
+
       await fs.writeFile(tempPath, Buffer.from(buffer));
+      console.log(`   Extracting text...`);
       text = await extractTextFromFile(tempPath, uploadedFile.mimetype);
+      console.log(`   Extracted ${text.length} characters`);
       // Clean up temp file
-      await fs.unlink(tempPath).catch(() => {}); 
+      await fs.unlink(tempPath).catch(() => {});
     } else if (uploadedFile.path) {
       // For local files
+      console.log(`📂 Processing local file...`);
       text = await extractTextFromFile(uploadedFile.path, uploadedFile.mimetype);
     } else {
       throw new Error('No file path or Cloudinary URL provided');
     }
     // Generate 6 questions from the file content (only at upload time)
+    console.log(`🤔 Generating questions...`);
     let questions: string[] = [];
     if (text && text.trim().length > 100) {
       const prompt = `You are an expert reader. Analyze the following document and generate 6 thought-provoking, insightful, and contextually relevant questions that a user could ask based on the document's content. Each question should reflect the actual structure, concepts, and ideas presented in the document, and must be no more than 80 characters long. Avoid vague or overly broad questions. Output only the 6 questions as a numbered Markdown list.
@@ -54,21 +71,49 @@ export async function processAndStoreFile(uploadedFile: UploadedFile): Promise<s
       ---`;
 
       try {
-        const result = await textModel.generateContent(prompt);
-        const response = await result.response;
-        const questionsText = response.text();
-        questions = questionsText
-          .split(/\n+/)
-          .map(line => line.replace(/^\d+\.|^- /, '').trim())
-          .filter(q => q.length > 0)
-          .slice(0, 6);
+        // Use direct fetch API for question generation (Bun compatibility)
+        // Note: Using v1beta API with gemini-2.0-flash-exp (1.5 models are retired)
+        const apiKey = process.env.GEMINI_API_KEY || '';
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: prompt }]
+            }]
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const questionsText = data.candidates[0].content.parts[0].text;
+          questions = questionsText
+            .split(/\n+/)
+            .map((line: string) => line.replace(/^\d+\.|^- /, '').trim())
+            .filter((q: string) => q.length > 0)
+            .slice(0, 6);
+          console.log(`   Generated ${questions.length} questions`);
+        } else {
+          console.log(`   Question generation failed (${response.status}), continuing without questions`);
+          questions = [];
+        }
       } catch (err) {
+        console.log(`   Question generation failed, continuing without questions`);
         questions = [];
       }
+    } else {
+      console.log(`   Text too short, skipping question generation`);
     }
     // Split text into chunks
+    console.log(`✂️ Splitting text into chunks...`);
     const chunks = await splitTextIntoChunks(text);
+    console.log(`   Created ${chunks.length} chunks`);
     // Create file record in database (store questions and device ID)
+    console.log(`💾 Creating file record in database...`);
     const file = await prisma.file.create({
       data: {
         filename: uploadedFile.filename,
@@ -83,26 +128,38 @@ export async function processAndStoreFile(uploadedFile: UploadedFile): Promise<s
         questions: questions.length > 0 ? questions : undefined,
       }
     });
+    console.log(`   File record created with ID: ${file.id}`);
     // Process chunks and generate embeddings
-    const chunkPromises = chunks.map(async (chunk) => {
-      const embedding = await generateEmbedding(chunk.content);
-      return prisma.chunk.create({
-        data: {
-          content: chunk.content,
-          chunkIndex: chunk.chunkIndex,
-          startChar: chunk.startChar,
-          endChar: chunk.endChar,
-          embedding,
-          fileId: file.id
-        }
-      });
+    console.log(`🧠 Generating embeddings for ${chunks.length} chunks...`);
+    const chunkPromises = chunks.map(async (chunk, index) => {
+      try {
+        console.log(`   Processing chunk ${index + 1}/${chunks.length}...`);
+        const embedding = await generateEmbedding(chunk.content);
+        return prisma.chunk.create({
+          data: {
+            content: chunk.content,
+            chunkIndex: chunk.chunkIndex,
+            startChar: chunk.startChar,
+            endChar: chunk.endChar,
+            embedding,
+            fileId: file.id
+          }
+        });
+      } catch (error) {
+        console.error(`   ❌ Failed to process chunk ${index + 1}:`, error);
+        throw error;
+      }
     });
     await Promise.all(chunkPromises);
     console.log(`✅ File processed successfully: ${uploadedFile.originalname} (${chunks.length} chunks)`);
     return file.id;
   } catch (error) {
     console.error('Error processing file:', error);
-    throw new Error('Failed to process file');
+    if (error instanceof Error) {
+      console.error('Error stack:', error.stack);
+      console.error('Error message:', error.message);
+    }
+    throw error; // Re-throw the original error instead of a generic one
   }
 }
 

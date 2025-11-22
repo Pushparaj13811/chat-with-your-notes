@@ -53,6 +53,14 @@ export const uploadFile = asyncHandler(async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Upload error:', error);
+
+    // Provide more specific error messages
+    if (error && typeof error === 'object' && 'http_code' in error) {
+      const cloudinaryError = error as { message?: string; http_code?: number };
+      const errorMessage = cloudinaryError.message || 'Failed to upload file to cloud storage';
+      throw new ApiError(cloudinaryError.http_code || 500, errorMessage, [], undefined, error instanceof Error ? error.stack : '');
+    }
+
     throw new ApiError(500, 'Failed to upload file', [], undefined, error instanceof Error ? error.stack : '');
   }
 });

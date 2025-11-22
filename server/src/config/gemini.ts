@@ -1,23 +1,69 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { appConfig } from './env';
 
-if (!appConfig.apis.gemini.isEnabled) {
-  throw new Error('GEMINI_API_KEY is required but not configured');
+// Get API key directly from process.env as fallback
+const apiKey = appConfig.apis.gemini.apiKey || process.env.GEMINI_API_KEY;
+
+// Debug logging for Gemini API configuration
+console.log('🔍 Gemini API Configuration:');
+console.log(`   From appConfig: ${appConfig.apis.gemini.apiKey ? '✅ Set' : '❌ Missing'}`);
+console.log(`   From process.env: ${process.env.GEMINI_API_KEY ? '✅ Set' : '❌ Missing'}`);
+console.log(`   Final API Key: ${apiKey ? '✅ Set' : '❌ Missing'}`);
+if (apiKey) {
+  console.log(`   API Key Length: ${apiKey.length}`);
+  console.log(`   API Key Preview: ${apiKey.substring(0, 10)}...`);
+  console.log(`   API Key Type: ${typeof apiKey}`);
+}
+console.log(`   Is Enabled: ${appConfig.apis.gemini.isEnabled}`);
+
+if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+  throw new Error('GEMINI_API_KEY is required but not configured properly');
 }
 
-export const genAI = new GoogleGenerativeAI(appConfig.apis.gemini.apiKey!);
+// Trim any whitespace from the API key
+const trimmedApiKey = apiKey.trim();
+console.log(`   Using trimmed API key of length: ${trimmedApiKey.length}`);
+
+export const genAI = new GoogleGenerativeAI(trimmedApiKey);
 
 export const embeddingModel = genAI.getGenerativeModel({ model: 'embedding-001' });
-export const textModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+export const textModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+console.log('✅ Gemini AI models initialized successfully');
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    const result = await embeddingModel.embedContent(text);
-    const embedding = await result.embedding;
-    return embedding.values;
+    console.log(`     Generating embedding with API key: ${trimmedApiKey.substring(0, 10)}...`);
+
+    // Use direct fetch API instead of the SDK to bypass potential Bun compatibility issues
+    const url = `https://generativelanguage.googleapis.com/v1/models/embedding-001:embedContent?key=${trimmedApiKey}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        content: {
+          parts: [{ text: text }]
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('     API Response Status:', response.status);
+      console.error('     API Response:', errorText);
+      throw new Error(`Embedding API failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const embedding = data.embedding.values;
+    console.log(`     Generated embedding with ${embedding.length} dimensions`);
+    return embedding;
   } catch (error) {
     console.error('Error generating embedding:', error);
-    throw new Error('Failed to generate embedding');
+    throw error;
   }
 }
 
@@ -85,9 +131,29 @@ ${recentHistory.map(msg => `${msg.role === 'user' ? '👤 User' : '🤖 Assistan
     `;
 
 
-    const result = await textModel.generateContent(fullPrompt);
-    const response = await result.response;
-    return response.text();
+    // Use direct fetch API for text generation (Bun compatibility)
+    // Note: Using v1beta API with gemini-2.0-flash-exp (1.5 models are retired)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${trimmedApiKey}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: fullPrompt }]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Text generation failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
   } catch (error) {
     console.error('Error generating response:', error);
     throw new Error('Failed to generate response');
@@ -119,9 +185,28 @@ ${conversationText}
 
 Summary:`;
 
-    const result = await textModel.generateContent(summaryPrompt);
-    const response = await result.response;
-    return response.text();
+    // Use direct fetch API for text generation (Bun compatibility)
+    // Note: Using v1beta API with gemini-2.0-flash-exp (1.5 models are retired)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${trimmedApiKey}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: summaryPrompt }]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      return ''; // Return empty if API fails
+    }
+
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
   } catch (error) {
     console.error('Error generating conversation summary:', error);
     return ''; // Return empty string if summarization fails
@@ -184,9 +269,29 @@ ${conversationHistory.map(msg => `${msg.role === 'user' ? '👤 User' : '🤖 As
     ### ✅ Answer:
     `;
 
-    const result = await textModel.generateContent(fullPrompt);
-    const response = await result.response;
-    return { answer: response.text(), shouldSummarize };
+    // Use direct fetch API for text generation (Bun compatibility)
+    // Note: Using v1beta API with gemini-2.0-flash-exp (1.5 models are retired)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${trimmedApiKey}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: fullPrompt }]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Text generation failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return { answer: data.candidates[0].content.parts[0].text, shouldSummarize };
   } catch (error) {
     console.error('Error generating memory-enhanced response:', error);
     throw new Error('Failed to generate memory-enhanced response');

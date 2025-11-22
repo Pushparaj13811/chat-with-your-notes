@@ -14,26 +14,40 @@ export interface TextChunk {
 
 export async function extractTextFromFile(filePath: string, mimeType: string): Promise<string> {
   try {
+    console.log(`     Reading file from: ${filePath}`);
     const buffer = await fs.readFile(filePath);
-    
+    console.log(`     Buffer size: ${buffer.length} bytes`);
+    console.log(`     Processing MIME type: ${mimeType}`);
+
     switch (mimeType) {
       case 'application/pdf':
+        console.log(`     Parsing PDF...`);
         const pdfData = await pdf(buffer);
+        console.log(`     PDF parsed, text length: ${pdfData.text.length}`);
         return pdfData.text;
-        
+
       case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        console.log(`     Parsing DOCX...`);
         const docxResult = await mammoth.extractRawText({ buffer });
+        console.log(`     DOCX parsed, text length: ${docxResult.value.length}`);
         return docxResult.value;
-        
+
       case 'text/plain':
-        return buffer.toString('utf-8');
-        
+        console.log(`     Parsing plain text...`);
+        const text = buffer.toString('utf-8');
+        console.log(`     Plain text length: ${text.length}`);
+        return text;
+
       default:
         throw new Error(`Unsupported file type: ${mimeType}`);
     }
   } catch (error) {
-    console.error('Error extracting text from file:', error);
-    throw new Error('Failed to extract text from file');
+    console.error('❌ Error extracting text from file:', error);
+    if (error instanceof Error) {
+      console.error('     Error message:', error.message);
+      console.error('     Error stack:', error.stack);
+    }
+    throw error; // Re-throw the original error
   }
 }
 
